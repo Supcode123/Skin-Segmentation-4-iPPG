@@ -2,16 +2,14 @@ import os
 import torch
 import torch.utils.data as data
 import numpy as np
-from torchvision import transforms
 from albumentations.pytorch.functional import img_to_tensor
 from PIL import Image
-TT = transforms.ToTensor()
 
 
 class Dataset(data.Dataset):
     def __init__(self,
                  root: str,
-                 spatial_transform=None,
+                 augmentation=None,
                  img_normalization=None,
                  mode: str = "train",
                  filter_mislabeled: bool = False):
@@ -19,7 +17,7 @@ class Dataset(data.Dataset):
         """ Creates class instance.
 
         :param root: Path to dataset
-        :param spatial_transform: Transformations applied to images AND label masks
+        :param augmentation: Transformations applied to images AND label masks
         :param img_normalization: Normalization transformations, only applied to labels
         :param mode: train/val/test
         """
@@ -27,7 +25,7 @@ class Dataset(data.Dataset):
         self.sample_list = []
         self.mode = mode
         self.normalization = img_normalization
-        self.spatial_transform = spatial_transform
+        self.augmentation = augmentation
 
         self.filter_mislabeled = filter_mislabeled
         self.mislabeled_samples = []
@@ -50,11 +48,14 @@ class Dataset(data.Dataset):
         for _, _dir, _file in os.walk(_path):
             for d in _dir:
                 if d == "images":
-                    for f in _file:
-                        img_file_list.append(os.path.join(_, d, f))
+                    img_dir = os.path.join(_, d)
+                    img_file_list += [os.path.join(img_dir, f) for f in os.listdir(img_dir)]
                 if d == "labels":
-                    for f in _file:
-                        label_file_list.append(os.path.join(_, d, f))
+                    label_dir = os.path.join(_, d)
+                    label_file_list += [os.path.join(label_dir, f) for f in os.listdir(label_dir)]
+
+        img_file_list.sort()
+        label_file_list.sort()
 
         # Filter list of image file paths
         if filter_mislabeled:
@@ -80,32 +81,30 @@ class Dataset(data.Dataset):
                         "name": img_name}
             self.sample_list.append(tmp_dict)
 
-        def __getitem__(self, index: int) -> (torch.Tensor, torch.Tensor, str):
-            sample = self.sample_list[index]
-            img = np.array(Image.open(sample["img"]))
-            mask = np.array(Image.open(sample["mask"]))
-            file_name = sample["name"]
+    def __getitem__(self, index: int) -> (torch.Tensor, torch.Tensor, str):
+        sample = self.sample_list[index]
+        img = np.array(Image.open(sample["img"]))
+        mask = np.array(Image.open(sample["mask"]))
+        file_name = sample["name"]
 
-            if self.spatial_transform is not None:
-                # To ensure the same transformation is applied to img + mask
-                data = self.spatial_transform(image=img, mask=mask)
-                img = data['image']
-                mask = data['mask']
+        if self.augmentation is not None:
+            # To ensure the same transformation is applied to img + mask
+            data = self.augmentation(image=img, mask=mask)
+            img = data['image']
+            mask = data['mask']
 
-            if self.normalization is not None:
-                img = self.normalization(image=img)['image']
+        if self.normalization is not None:
+            img = self.normalization(image=img)['image']
 
-            img = img_to_tensor(img)
-            mask = torch.from_numpy(mask)
+        img = img_to_tensor(img)
+        mask = torch.from_numpy(mask)
 
-            mask = self.remap_mask(mask)
-            mask = mask.long().squeeze(0)
+        mask = mask.long().squeeze(0)
 
-            return img, mask, file_name
+        return img, mask, file_name
 
-        def __len__(self) -> int:
-            return len(self.sample_list)
+    def __len__(self) -> int:
+        return len(self.sample_list)
 
-        def img_size(self) -> tuple:
-            return self[0][0].shape
-
+    def img_size(self) -> tuple:
+        return self[0][0].shape
