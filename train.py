@@ -1,10 +1,11 @@
 
-from data.processed.DataLoader import data_create
-from unitls.before_train import parse_train_args, get_train_info
+from code_projects.data.dataLoader import data_create
+from code_projects.unitls.before_train import parse_train_args, get_train_info
 
 print("##### config Load ... #####")
 
 args = parse_train_args()
+print(args)
 device, output_dir, logger, data_config, model_config, train_config,\
     warmstart, start_epoch, tb_writer = get_train_info(args)
 

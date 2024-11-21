@@ -12,9 +12,9 @@ def parse_train_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', dest='data_path', help='path to dataset root', type=str)
-    parser.add_argument('--data_config', dest='data_config', help='path to the data config file', type=str)
-    parser.add_argument('--model_config', dest='model_config', help='path to the model config file', type=str)
-    parser.add_argument('--train_config', dest='train_config', help='path to the training config file', type=str)
+    parser.add_argument('--data_conf', dest='data_conf', help='path to the data config file', type=str)
+    parser.add_argument('--model_conf', dest='model_conf', help='path to the model config file', type=str)
+    parser.add_argument('--train_conf', dest='train_conf', help='path to the training config file', type=str)
     parser.add_argument('--log_path', dest='log_path', help='path to the logging destination', type=str)
     parser.add_argument('--warmstart', dest='warmstart', help='whether log_path is an extisting checkpoint',
                         default=False, type=bool)
@@ -25,6 +25,7 @@ def parse_train_args():
 
 
 def create_logger(log_path: str):
+    """Create a logger"""
     logger = logging.getLogger("file_logger")
     logger.setLevel(logging.DEBUG)
 

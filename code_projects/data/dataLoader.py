@@ -1,6 +1,6 @@
 import albumentations as A
 from torch.utils.data import DataLoader
-from data.interim.Dataset import Dataset
+from code_projects.data.dataset_class import Dataset
 
 
 def data_create(root: str, train_info: dict, data_info: dict):

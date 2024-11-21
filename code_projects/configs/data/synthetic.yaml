@@ -1,0 +1,3 @@
+DATASET: synthetic
+FILTER_MISLABELED: False
+IMG_SIZE: (3, 512, 512)
