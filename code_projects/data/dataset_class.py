@@ -9,7 +9,7 @@ from PIL import Image
 class Dataset(data.Dataset):
     def __init__(self,
                  root: str,
-                 augmentation=None,
+                 transform=None,
                  img_normalization=None,
                  mode: str = "train",
                  filter_mislabeled: bool = False):
@@ -17,7 +17,7 @@ class Dataset(data.Dataset):
         """ Creates class instance.
 
         :param root: Path to dataset
-        :param augmentation: Transformations applied to images AND label masks
+        :param transform: Augmentations applied to images AND label masks
         :param img_normalization: Normalization transformations, only applied to labels
         :param mode: train/val/test
         """
@@ -25,7 +25,7 @@ class Dataset(data.Dataset):
         self.sample_list = []
         self.mode = mode
         self.normalization = img_normalization
-        self.augmentation = augmentation
+        self.transform = transform
 
         self.filter_mislabeled = filter_mislabeled
         self.mislabeled_samples = []
@@ -87,9 +87,9 @@ class Dataset(data.Dataset):
         mask = np.array(Image.open(sample["mask"]))
         file_name = sample["name"]
 
-        if self.augmentation is not None:
+        if self.transform is not None:
             # To ensure the same transformation is applied to img + mask
-            data = self.augmentation(image=img, mask=mask)
+            data = self.transform(image=img, mask=mask)
             img = data['image']
             mask = data['mask']
 

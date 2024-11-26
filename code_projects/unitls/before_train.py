@@ -4,7 +4,51 @@ import shutil
 import time
 import logging
 import yaml
+import torch
+from timm import optim
+
 from torch.utils.tensorboard import SummaryWriter
+
+
+class PolynomialLR(torch.optim.lr_scheduler._LRScheduler):
+    def __init__(
+            self,
+            optimizer,
+            step_size,
+            iter_warmup,
+            iter_max,
+            power,
+            min_lr=0,
+            last_epoch=-1,
+    ):
+        self.step_size = step_size
+        self.iter_warmup = int(iter_warmup)
+        self.iter_max = int(iter_max)
+        self.power = power
+        self.min_lr = min_lr
+        super(PolynomialLR, self).__init__(optimizer, last_epoch)
+
+    def polynomial_decay(self, lr):
+        iter_cur = float(self.last_epoch)
+        if iter_cur < self.iter_warmup:
+            coef = iter_cur / self.iter_warmup
+            coef *= (1 - self.iter_warmup / self.iter_max) ** self.power
+        else:
+            coef = (1 - iter_cur / self.iter_max) ** self.power
+        return (lr - self.min_lr) * coef + self.min_lr
+
+    def get_lr(self):
+        if (
+                (self.last_epoch == 0)
+                or (self.last_epoch % self.step_size != 0)
+                or (self.last_epoch > self.iter_max)
+        ):
+            return [group["lr"] for group in self.optimizer.param_groups]
+        return [self.polynomial_decay(lr) for lr in self.base_lrs]
+
+    def step_update(self, num_updates):
+        self.step()
+
 
 def parse_train_args():
     """
@@ -13,7 +57,7 @@ def parse_train_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', dest='data_path', help='path to dataset root', type=str)
     parser.add_argument('--data_conf', dest='data_conf', help='path to the data config file', type=str)
-    parser.add_argument('--model_conf', dest='model_conf', help='path to the model config file', type=str)
+    parser.add_argument('--model_conf', dest='model_conf', help='path to the models config file', type=str)
     parser.add_argument('--train_conf', dest='train_conf', help='path to the training config file', type=str)
     parser.add_argument('--log_path', dest='log_path', help='path to the logging destination', type=str)
     parser.add_argument('--warmstart', dest='warmstart', help='whether log_path is an extisting checkpoint',
@@ -22,6 +66,39 @@ def parse_train_args():
 
     args = parser.parse_args()
     return args
+
+
+def create_optimizer(model: torch.nn.Module, train_info: dict):
+    """ Creates optimizer instance from config."""
+
+    optimizer = optim.create_optimizer_v2(model,
+                                          opt=train_info["OPTIMIZER"],
+                                          lr=train_info["BASE_LR"],
+                                          momentum=train_info["MOMENTUM"],
+                                          weight_decay=train_info["WEIGHT_DECAY"],
+                                          betas=eval(train_info["OPTIM_BETAS"]))
+    return optimizer
+
+
+def create_scheduler(optimizer, train_info: dict):
+    """ Creates scheduler instance from config. """
+
+    name = train_info["SCHEDULER"]
+    min_lr = train_info["MIN_LR"]
+
+    if name.upper() == "POLYNOMIALLR":
+        scheduler = PolynomialLR(
+            optimizer=optimizer,
+            step_size=1,
+            iter_warmup=train_info["WARMUP_LR"],
+            iter_max=train_info["MAX_EPOCH"],
+            power=train_info["POWER"],
+            min_lr=min_lr,
+        )
+    else:
+        raise ValueError("Currently we only support POLYNOMIALLR")
+
+    return scheduler
 
 
 def create_logger(log_path: str):

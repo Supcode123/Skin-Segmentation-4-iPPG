@@ -3,15 +3,27 @@ from torch.utils.data import DataLoader
 from code_projects.data.dataset_class import Dataset
 
 
-def data_create(root: str, train_info: dict, data_info: dict):
+def data_load(root: str, train_info: dict, data_info: dict):
     train_dataset = Dataset(root=root,
-                            augmentation=A.Compose([
+                            transform=A.Compose([
+                                #
+                                A.HorizontalFlip(p=0.5),
+                                A.VerticalFlip(p=0.5),
+                                # Randomly shift,zoom,rotate
+                                A.ShiftScaleRotate(
+                                    shift_limit=0.1,
+                                    scale_limit=0.2,
+                                    rotate_limit=30,
+                                    border_mode=0,
+                                    p=0.8  # 执行的概率
+                                ),
                                 # Randomly adjust brightness and contrast
-                                A.RandomBrightnessContrast(
-                                    brightness_limit=0.2,
-                                    contrast_limit=0.2,
-                                    p=0.8),  # Probability of execution
-                                # Randomly adjust color saturation and hue
+                                # A.RandomBrightnessContrast(
+                                #     brightness_limit=0.2,
+                                #     contrast_limit=0.2,
+                                #     p=0.8),  # Probability of execution
+
+                                #Randomly adjust color saturation and hue
                                 A.ColorJitter(
                                     brightness=(0.8, 1.2),
                                     contrast=(0.8, 1.2),
@@ -22,15 +34,6 @@ def data_create(root: str, train_info: dict, data_info: dict):
                                 A.GaussNoise(
                                     var_limit=(10.0, 50.0),
                                     p=0.3),
-                                # CLAHE (Contrast Limited Adaptive Histogram Equalization)
-                                A.CLAHE(
-                                    clip_limit=2.0,
-                                    tile_grid_size=(8, 8),
-                                    p=0.5),
-                                # Randomly adjust the gamma value
-                                A.RandomGamma(
-                                    gamma_limit=(80, 120),
-                                    p=0.5),
                             ]),
                             img_normalization=A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                             mode='train',
@@ -44,7 +47,7 @@ def data_create(root: str, train_info: dict, data_info: dict):
                                   num_workers=train_info["WORKERS"])
 
     val_dataset = Dataset(root=root,
-                          augmentation=None,
+                          transform=None,
                           img_normalization=A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                           mode='val',
                           filter_mislabeled=data_info['FILTER_MISLABELED'])
@@ -57,7 +60,7 @@ def data_create(root: str, train_info: dict, data_info: dict):
                                 num_workers=train_info["WORKERS"])
 
     test_dataset = Dataset(root=root,
-                           augmentation=None,
+                           transform=None,
                            img_normalization=A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                            mode='test',
                            filter_mislabeled=data_info['FILTER_MISLABELED'])

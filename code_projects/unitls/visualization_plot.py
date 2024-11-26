@@ -1,13 +1,12 @@
 import matplotlib.pyplot as plt
-import os
-import cv2
 import numpy as np
+import torch
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def remap_experiment(mask):
-    """Remap mask """
+def remap_original(mask):
+    """Remap mask for original image&mask"""
     class_remapping_exp = {
         0: [0],
         1: [1],
@@ -28,7 +27,6 @@ def remap_experiment(mask):
         16: [16],
         17: [17],
         18: [18],
-        255: [255],
     }
     classes_exp = {
         0: 'Background',
@@ -49,28 +47,28 @@ def remap_experiment(mask):
         15: 'Clothing',
         16: 'Glasses',
         17: 'Headwear',
-        28: 'Facewear',
-        255: "Ignore",
+        18: 'Facewear',
     }
     colormap = get_remapped_colormap(class_remapping_exp)
     remapped_mask = remap_mask(mask, class_remapping=class_remapping_exp)
     return remapped_mask, classes_exp, colormap
 
 
-def plot_experiment(img_path, mask_path):
-    """
-    Generates plot of image and rgb mask with colorbar for specified experiment
-    :param img_path: Path to input image
-    :param mask_path: Path to input segmentation mask
-    :param experiment: int Experimental setup (1,2 or 3)
-    :return: plot of image and rgb mask with class colorbar
-    """
-    img = cv2.imread(img_path)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    mask = cv2.imread(mask_path, cv2.COLOR_BGR2GRAY)
-    remapped_mask, classes_exp, colormap = remap_experiment(mask)
-    return plot_images(img, remapped_mask, colormap, classes_exp)
+def remap_simple(mask):
+    """Remap mask which smplified classes"""
+    class_remapping_exp = {
+         0: [0,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
+         1: [1,2],
+    }
 
+    classes_exp = {
+        0: "Non-Skin",
+        1: "Skin",
+    }
+
+    colormap = get_remapped_colormap(class_remapping_exp)
+    remapped_mask = remap_mask(mask, class_remapping=class_remapping_exp)
+    return remapped_mask, classes_exp, colormap
 
 def get_colormap():
     """
@@ -79,8 +77,8 @@ def get_colormap():
     """
     return np.asarray(
         [
-            [0, 137, 255],
-            [255, 165, 0],
+            [58, 0, 82],
+            [253, 234, 39],
             [255, 156, 201],
             [99, 0, 255],
             [255, 0, 0],
@@ -154,28 +152,28 @@ def mask_to_colormap(mask, colormap):
     return rgb
 
 
-def plot_images(img, remapped_mask, remapped_colormap, classes_exp):
+def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp):
     """
     Generates plot of Image and RGB mask with class colorbar
-    :param img: 3D ndarray of input image
+    :param fig: matplotlib.figure.Figure object
+    :param position: subgraph position index, for example [row number, column number, index]
     :param remapped_mask: 2D/3D ndarray of input segmentation mask with class ids
-    :param remapped_colormap: dictionary that indicates color corresponding to each class
-    :param classes_exp: dictionary of classes names and corresponding class ids
-    :param experiment: experimental setup
+    :param mask_rgb: 3D ndarray Generated RGB mask
+    :param colormap: dictionary that indicates color corresponding to each class
+    :param classes_exp: corresponding class numbers
     :return: plot of image and rgb mask with class colorbar
     """
-    mask_rgb = mask_to_colormap(remapped_mask, colormap=remapped_colormap)
-
-    fig, axs = plt.subplots(1, 2, figsize=(26, 7))
-    plt.subplots_adjust(left=1 / 16.0, right=1 - 1 / 16.0, bottom=1 / 8.0, top=1 - 1 / 8.0)
-    axs[0].imshow(img)
-    axs[0].axis("off")
-
-    img_u_labels = np.unique(remapped_mask)
+    N = position[0]
+    sample_count = position[1]
+    pos = position[2]
+    ax = fig.add_subplot(N, sample_count, pos, xticks=[], yticks=[])
+    img_u_labels = np.unique(remapped_mask)  # 获取唯一标签
     c_map = []
     cl = []
     for i_label in img_u_labels:
-        for i_key, i_color in remapped_colormap.items():
+        if i_label == 255:  # Skip ignore_label (255)
+            continue
+        for i_key, i_color in colormap.items():
             if i_label == i_key:
                 c_map.append(i_color)
         for i_key, i_class in classes_exp.items():
@@ -184,20 +182,72 @@ def plot_images(img, remapped_mask, remapped_colormap, classes_exp):
     cl = np.asarray(cl)
     cmp = np.asarray(c_map) / 255
     cmap_mask = LinearSegmentedColormap.from_list("seg_mask_colormap", cmp, N=len(cmp))
-    im = axs[1].imshow(mask_rgb, cmap=cmap_mask)
-    intervals = np.linspace(0, 255, num=len(cl) + 1 - 1)
-    ticks = intervals + int((intervals[1] - intervals[0]) / 2)
-    divider = make_axes_locatable(axs[1])
-    cax1 = divider.append_axes("right", size="5%", pad=0.05)
-    cbar1 = fig.colorbar(mappable=im, cax=cax1, ticks=ticks, orientation="vertical")
-    cbar1.ax.set_yticklabels(cl)
-    axs[1].axis("off")
-    fig.tight_layout()
-    plt.show()
+    im = ax.imshow(mask_rgb, cmap=cmap_mask)
+    intervals = np.linspace(0, 255, num=len(cmp) + 1)
+    ticks = intervals[:-1] + int(intervals[1] - intervals[0]) / 2
+    divider = make_axes_locatable(ax)
+    caxl = divider.append_axes("right", size="5%", pad=0.05)
+    cbarl = fig.colorbar(mappable=im, cax=caxl, ticks=ticks, orientation="vertical")
+    cbarl.ax.set_yticklabels(cl)
 
-if __name__ == "__main__":
-    data_path = "D:/sythetic_data/dataset_100"
-    img_id = "000000"
-    img_path = os.path.join(data_path, "image", img_id + ".png")
-    mask_path = os.path.join(data_path, "label", img_id + "_seg.png")
-    plot_experiment(img_path, mask_path)
+def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor, img_batch: torch.Tensor):
+    """
+    Given a batch of predicted masks, gt masks and input images,
+    return a matplotlib figure.
+
+    Args:
+        pred_mask_batch(tensor): batch of predicted masks, (B, H, W)
+        gt_mask_batch(tensor): batch of gt masks, (B, H, W)
+        img_batch(tensor): batch of input images, (B, C, H, W)
+
+    Returns:
+        fig: plot object
+    """
+
+    N, _, _ = pred_mask_batch.size()
+    assert pred_mask_batch.shape == gt_mask_batch.shape
+    assert N == img_batch.shape[0]
+    assert pred_mask_batch.shape[-2:] == img_batch.shape[-2:]
+
+    fig = plt.figure(figsize=(N * 5, 4 * 2.5), dpi=100)
+    # col_titles = ['Input Image', 'Ground Truth', 'Predicted (19 classes)', 'Predicted (2 classes)']
+    # for i, title in enumerate(col_titles):
+    #     fig.text(0.1 + i * 0.25, 1.0, title, ha='center', va='center', fontsize=12)
+    for n in range(N):
+
+        # with 19 classes
+        remapped_pred_mask_19, classes_19, colormap_19 = remap_original(pred_mask_batch[n, ...].cpu().numpy())
+        remapped_gt_mask, _, _ = remap_original(gt_mask_batch[n, ...].cpu().numpy())
+        # with 2 classes
+        remapped_pred_mask_2, classes_2, colormap_2 = remap_simple(pred_mask_batch[n, ...].cpu().numpy())
+
+        pred_mask_rgb_19 = mask_to_colormap(remapped_pred_mask_19, colormap=colormap_19)
+        pred_mask_rgb_2 = mask_to_colormap(remapped_pred_mask_2, colormap=colormap_2)
+        gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap_19)
+        img = img_batch[n, ...].permute(1, 2, 0).cpu().numpy()
+        # image
+        ax = fig.add_subplot(N, 4, n * N + 1, xticks=[], yticks=[])
+        ax.imshow(img)
+        # ground truth mask
+        subplot(fig, [N, 4, n * N + 2], remapped_gt_mask, gt_mask_rgb, colormap_19, classes_19)
+        # predicted mask with 19 classes
+        subplot(fig, [N, 4, n * N + 3], remapped_pred_mask_19, pred_mask_rgb_19, colormap_19, classes_19)
+        # remapped the predicted mask with 2 classes
+        subplot(fig, [N, 4, n * N + 4], remapped_pred_mask_2, pred_mask_rgb_2, colormap_2, classes_2)
+
+        ax.axis("off")
+        fig.tight_layout()
+    return fig
+
+
+def denormalize(img_tensor: torch.Tensor, mean: list , std: list) -> torch.Tensor:
+    for i in range(3):
+        img_tensor[i] = img_tensor[i] * std[i] + mean[i]
+    return img_tensor
+
+# if __name__ == "__main__":
+#     data_path = "D:/sythetic_data/dataset_100"
+#     img_id = "000000"
+#     img_path = os.path.join(data_path, "image", img_id + ".png")
+#     mask_path = os.path.join(data_path, "label", img_id + "_seg.png")
+#     plot_simple(img_path, mask_path)
