@@ -74,7 +74,7 @@ def create_optimizer(model: torch.nn.Module, train_info: dict):
     optimizer = optim.create_optimizer_v2(model,
                                           opt=train_info["OPTIMIZER"],
                                           lr=train_info["BASE_LR"],
-                                          momentum=train_info["MOMENTUM"],
+                                          #momentum=train_info["MOMENTUM"],
                                           weight_decay=train_info["WEIGHT_DECAY"],
                                           betas=eval(train_info["OPTIM_BETAS"]))
     return optimizer

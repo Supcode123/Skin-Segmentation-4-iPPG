@@ -6,7 +6,7 @@ import torch.nn as nn
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from code_projects.data.dataLoader import data_load
-from data.interim.experiments import remap_label
+from code_projects.data.experiments import remap_label
 from models.smp_model import model_create
 from code_projects.unitls.before_train import parse_train_args, get_train_info, \
                                       create_optimizer, create_scheduler
