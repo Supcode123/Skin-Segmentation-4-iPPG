@@ -3,6 +3,8 @@ import os
 import shutil
 import time
 import logging
+from pathlib import Path
+
 import yaml
 import torch
 from timm import optim
@@ -124,7 +126,9 @@ def get_train_info(args):
 
     with open(args.data_conf, "r") as doc:
         data_config = yaml.load(doc, Loader=yaml.Loader)
-        data_name = args.data_conf.split("/")[-1].split(".")[0]
+        data_name = Path(args.data_conf).stem
+        # print (f"data_name: {data_name}")
+        # data_name = args.data_conf.split("/")[-1].split(".")[0]
     with open(args.model_conf, "r") as doc:
         model_config = yaml.load(doc, Loader=yaml.Loader)
         model_name = model_config["NAME"]

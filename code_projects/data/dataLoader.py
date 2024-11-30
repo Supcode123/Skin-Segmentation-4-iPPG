@@ -5,6 +5,7 @@ from code_projects.data.dataset_class import Dataset
 
 def data_load(root: str, train_info: dict, data_info: dict):
     train_dataset = Dataset(root=root,
+                            classes=data_info['CLASSES'],
                             transform=A.Compose([
                                 #
                                 A.HorizontalFlip(p=0.5),
@@ -47,6 +48,7 @@ def data_load(root: str, train_info: dict, data_info: dict):
                                   num_workers=train_info["WORKERS"])
 
     val_dataset = Dataset(root=root,
+                          classes=data_info['CLASSES'],
                           transform=None,
                           img_normalization=A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                           mode='val',
@@ -60,6 +62,7 @@ def data_load(root: str, train_info: dict, data_info: dict):
                                 num_workers=train_info["WORKERS"])
 
     test_dataset = Dataset(root=root,
+                           classes=data_info['CLASSES'],
                            transform=None,
                            img_normalization=A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                            mode='test',

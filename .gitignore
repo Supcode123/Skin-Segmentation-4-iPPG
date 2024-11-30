@@ -7,3 +7,4 @@ data/raw/*
 .idea/
 *.pyc
 __pycache__/
+log/

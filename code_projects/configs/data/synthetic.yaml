@@ -1,4 +1,4 @@
-DATASET: synthetic
+#DATASET: synthetic
 FILTER_MISLABELED: False
 IMG_SIZE: (3, 256, 256)
 CLASSES: 19

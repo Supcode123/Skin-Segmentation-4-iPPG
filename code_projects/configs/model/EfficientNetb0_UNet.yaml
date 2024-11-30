@@ -1,4 +1,4 @@
-NAME: EfficientNetB0_U-Net
+NAME: EfficientNetb0_UNet
 
 BACKBONE: efficientnet-b0
 HEAD: Unet

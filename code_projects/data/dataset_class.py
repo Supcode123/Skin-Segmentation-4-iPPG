@@ -9,6 +9,7 @@ from PIL import Image
 class Dataset(data.Dataset):
     def __init__(self,
                  root: str,
+                 classes: int,
                  transform=None,
                  img_normalization=None,
                  mode: str = "train",
@@ -24,6 +25,7 @@ class Dataset(data.Dataset):
         assert os.path.isdir(root)
         self.sample_list = []
         self.mode = mode
+        self.num_classes = classes
         self.normalization = img_normalization
         self.transform = transform
 
