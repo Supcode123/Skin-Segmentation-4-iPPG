@@ -64,6 +64,10 @@ def parse_train_args():
     parser.add_argument('--log_path', dest='log_path', help='path to the logging destination', type=str)
     parser.add_argument('--warmstart', dest='warmstart', help='whether log_path is an extisting checkpoint',
                         default=False, type=bool)
+    parser.add_argument('--warmstart_epoch', dest='warmstart_epoch', help='the epoch numer to warmstart',
+                        default=None, type=int)
+    parser.add_argument('--warmstart_dir', dest='warmstart_dir', help='the path of the dir for saved uncompleted model',
+                        default=None, type=str)
     parser.add_argument('--device', dest='device', default='cuda', help='Device to use', type=str)
 
     args = parser.parse_args()
@@ -138,7 +142,7 @@ def get_train_info(args):
     name = model_name + "_" + data_name
 
     device = args.device
-
+    warmstart_dir = args.warmstart_dir
     output_dir = os.path.join(args.log_path, f"{name}/{cur_time}")
     tb_dir = os.path.join(output_dir, "tensorboard")
 
@@ -146,12 +150,12 @@ def get_train_info(args):
         os.makedirs(tb_dir, exist_ok=False)
 
     if args.warmstart:
-        raise NotImplementedError
+        start_epoch = args.warmstart_epoch
     else:
         start_epoch = 0
-        log_file_path = os.path.join(output_dir, 'training.log')
-        logger = create_logger(log_file_path)
-        logger.info(args)
+    log_file_path = os.path.join(output_dir, 'training.log')
+    logger = create_logger(log_file_path)
+    logger.info(args)
 
     shutil.copy(args.data_conf, os.path.join(output_dir, "data_config.yaml"))
     shutil.copy(args.model_conf, os.path.join(output_dir, "model_config.yaml"))
@@ -159,4 +163,5 @@ def get_train_info(args):
 
     tb_writer = SummaryWriter(log_dir=tb_dir)
 
-    return device, output_dir, logger, data_config, model_config, train_config, args.warmstart, start_epoch, tb_writer
+    return device, output_dir, logger, data_config, model_config, train_config,\
+           args.warmstart, start_epoch, warmstart_dir, tb_writer

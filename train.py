@@ -20,7 +20,7 @@ def main():
     args = parse_train_args()
     print(args)
     device, output_dir, logger, data_config, model_config, train_config,\
-        warmstart, start_epoch, tb_writer = get_train_info(args)
+     warmstart, start_epoch, warmstart_dir, tb_writer = get_train_info(args)
 
     print("##### Load data ... #####")
 
@@ -52,9 +52,9 @@ def main():
     model.train()
 
     if warmstart:
-        model.load_state_dict(torch.load('...', map_location='cpu'))
-        optimizer.load_state_dict(torch.load('...', map_location='cpu'))
-        scheduler.load_state_dict(torch.load('...', map_location='cpu'))
+        model.load_state_dict(torch.load(os.path.join(warmstart_dir,'model_checkpoint.pt'), map_location=device))
+        optimizer.load_state_dict(torch.load(os.path.join(warmstart_dir,'optim_checkpoint.pt'), map_location=device))
+        scheduler.load_state_dict(torch.load(os.path.join(warmstart_dir,'scheduler_checkpoint.pt'), map_location=device))
 
     print("##### Training")
 
