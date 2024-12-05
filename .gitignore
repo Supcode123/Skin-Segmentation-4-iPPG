@@ -9,3 +9,4 @@ data/raw/*
 __pycache__/
 log/
 venv/
+.ipynb_checkpoints/
