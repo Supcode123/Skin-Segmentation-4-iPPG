@@ -9,17 +9,21 @@ import matplotlib.pyplot as plt
 from torchmetrics import JaccardIndex
 from tqdm import tqdm
 from code_projects.data.dataLoader import data_load
+from data.experiments import EXP
 from models.smp_model import model_create
 from code_projects.unitls.before_train import parse_eval_args
 from code_projects.unitls.visualization_plot import create_fig, denormalize
 
 args = parse_eval_args()
+data_path = os.path.abspath(args.data_path)
+chkpt_path = os.path.abspath(args.chkpt_path)
 assert os.path.isdir(args.data_path), "Invalid data path."
 assert os.path.isdir(args.chkpt_path), "Invalid checkpoint path."
 
-if os.path.isdir(args.chkpt_path + "eval/"):
-    shutil.rmtree(args.chkpt_path + "eval/")
-os.makedirs(args.chkpt_path + "eval/", exist_ok=False)
+eval_path = os.path.join(args.chkpt_path, "eval")
+if os.path.isdir(eval_path):
+    shutil.rmtree(eval_path)
+os.makedirs(eval_path, exist_ok=False)
 
 print("##### Load config")
 
@@ -43,7 +47,7 @@ model = model_create(model_info,data_info).to(args.device)
 model.load_state_dict(torch.load(args.chkpt_path + "model_checkpoint.pt", map_location=args.device))
 model.eval()
 
-mIoU = JaccardIndex(task='multiclass', num_classes=test_dataset.num_classes, average=None).to(args.device)
+mIoU = JaccardIndex(task='multiclass', num_classes=data_info["CLASSES"], average=None).to(args.device)
 
 miou_scores_per_sample = None
 acc_per_sample = None
@@ -71,14 +75,14 @@ miou_score_mean = torch.mean(miou_scores_per_sample, dim=0)
 miou_score_std = torch.std(miou_scores_per_sample, dim=0)
 
 fig, ax = plt.subplots()
-ax.bar(np.arange(0, test_dataset.num_classes),
+ax.bar(np.arange(0, data_info["CLASSES"]),
        miou_score_mean.cpu().numpy(),
        yerr=miou_score_std.cpu().numpy(),
        alpha=0.5, ecolor='black', capsize=10)
 ax.set_ylabel('Mean IoU')
 ax.yaxis.grid(True)
 ax.set_xticks(np.arange(0, test_dataset.num_classes))
-ax.set_xticklabels(list(test_dataset._EXP['CLASS'].values()), rotation=45, ha="right")
+ax.set_xticklabels(list(EXP['CLASS'].values()), rotation=45, ha="right")
 ax.set_xlabel('Class')
 
 plt.tight_layout()

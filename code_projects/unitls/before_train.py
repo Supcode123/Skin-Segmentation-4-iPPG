@@ -73,6 +73,18 @@ def parse_train_args():
     args = parser.parse_args()
     return args
 
+def parse_eval_args():
+    """
+    Parse input arguments for test scripts
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', dest='data_path', help='path to dataset root', type=str)
+    parser.add_argument('--test_conf', dest='test_conf', help='path to the test config file', type=str)
+    parser.add_argument('--chkpt_path', dest='chkpt_path', help='path to model checkpoint DIR', type=str)
+    parser.add_argument('--device', dest='device', default='cuda', help='Device to use', type=str)
+
+    args = parser.parse_args()
+    return args
 
 def create_optimizer(model: torch.nn.Module, train_info: dict):
     """ Creates optimizer instance from config."""
