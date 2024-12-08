@@ -247,7 +247,7 @@ def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp)
     cbarl = fig.colorbar(mappable=im, cax=caxl, ticks=ticks, orientation="vertical")
     cbarl.ax.set_yticklabels(cl)
 
-def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor, img_batch: torch.Tensor):
+def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor, img_batch: torch.Tensor, cls: int):
     """
     Given a batch of predicted masks, gt masks and input images,
     return a matplotlib figure.
@@ -271,26 +271,43 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor, img_b
     # for i, title in enumerate(col_titles):
     #     fig.text(0.1 + i * 0.25, 1.0, title, ha='center', va='center', fontsize=12)
     for n in range(N):
+        if cls == 19 :
+            # with 19 classes
+            remapped_pred_mask_19, classes_19, colormap_19 = remap_original(pred_mask_batch[n, ...].cpu().numpy())
+            remapped_gt_mask, _, _ = remap_original(gt_mask_batch[n, ...].cpu().numpy())
+            # with 2 classes
+            remapped_pred_mask_2, classes_2, colormap_2 = remap_simple(pred_mask_batch[n, ...].cpu().numpy())
 
-        # with 19 classes
-        remapped_pred_mask_19, classes_19, colormap_19 = remap_original(pred_mask_batch[n, ...].cpu().numpy())
-        remapped_gt_mask, _, _ = remap_original(gt_mask_batch[n, ...].cpu().numpy())
-        # with 2 classes
-        remapped_pred_mask_2, classes_2, colormap_2 = remap_simple(pred_mask_batch[n, ...].cpu().numpy())
+            pred_mask_rgb_19 = mask_to_colormap(remapped_pred_mask_19, colormap=colormap_19)
+            pred_mask_rgb_2 = mask_to_colormap(remapped_pred_mask_2, colormap=colormap_2)
+            gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap_19)
+            img = img_batch[n, ...].permute(1, 2, 0).cpu().numpy()
+            # image
+            ax = fig.add_subplot(N, 4, n * 4 + 1, xticks=[], yticks=[])
+            ax.imshow(img)
+            # ground truth mask
+            subplot(fig, [N, 4, n * 4 + 2], remapped_gt_mask, gt_mask_rgb, colormap_19, classes_19)
+            # predicted mask with 19 classes
+            subplot(fig, [N, 4, n * 4 + 3], remapped_pred_mask_19, pred_mask_rgb_19, colormap_19, classes_19)
+            # remapped the predicted mask with 2 classes
+            subplot(fig, [N, 4, n * 4 + 4], remapped_pred_mask_2, pred_mask_rgb_2, colormap_2, classes_2)
 
-        pred_mask_rgb_19 = mask_to_colormap(remapped_pred_mask_19, colormap=colormap_19)
-        pred_mask_rgb_2 = mask_to_colormap(remapped_pred_mask_2, colormap=colormap_2)
-        gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap_19)
-        img = img_batch[n, ...].permute(1, 2, 0).cpu().numpy()
-        # image
-        ax = fig.add_subplot(N, 4, n * N + 1, xticks=[], yticks=[])
-        ax.imshow(img)
-        # ground truth mask
-        subplot(fig, [N, 4, n * N + 2], remapped_gt_mask, gt_mask_rgb, colormap_19, classes_19)
-        # predicted mask with 19 classes
-        subplot(fig, [N, 4, n * N + 3], remapped_pred_mask_19, pred_mask_rgb_19, colormap_19, classes_19)
-        # remapped the predicted mask with 2 classes
-        subplot(fig, [N, 4, n * N + 4], remapped_pred_mask_2, pred_mask_rgb_2, colormap_2, classes_2)
+        elif cls == 2 :
+            remapped_pred_mask, classes, colormap = remap_simple(pred_mask_batch[n, ...].cpu().numpy())
+
+            remapped_gt_mask, _, _ = remap_simple(gt_mask_batch[n, ...].cpu().numpy())
+            pred_mask_rgb = mask_to_colormap(remapped_pred_mask, colormap=colormap)
+            gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)
+            img = img_batch[n, ...].permute(1, 2, 0).cpu().numpy()
+            # image
+            ax = fig.add_subplot(N, 3, n * 3 + 1, xticks=[], yticks=[])
+            ax.imshow(img)
+            # ground truth mask
+            subplot(fig, [N, 3, n * 3 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
+            # remapped the predicted mask with 2 classes
+            subplot(fig, [N, 3, n * 3 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
+        else:
+            raise ValueError
 
         ax.axis("off")
         fig.tight_layout()

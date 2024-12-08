@@ -1,4 +1,4 @@
-EXP = {"LABEL": {
+EXP1 = {"LABEL": {
     0: [0],
     1: [1],
     2: [2],
@@ -44,14 +44,29 @@ EXP = {"LABEL": {
     }
 }
 
+EXP2 = {"LABEL": {
+    0: [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+    1: [1, 2],
+    255: [255],
+},
+    "CLASS": {
+        0: "Non-Skin",
+        1: "Skin",
+        255: "Ignore",
+    }
+}
 
-def remap_label(label: int):  # -> (int, str):
+def remap_label(label: int, classes: int):  # -> (int, str):
 
     """ Returns remapped label id and label name given label and exp id."""
+    if classes == 19 :
+        _exp = EXP1
+    elif classes == 2 :
+        _exp = EXP2
 
-    for k, v in EXP["LABEL"].items():
+    for k, v in _exp["LABEL"].items():
 
         if label in v:
-            return k, EXP["CLASS"][k]
+            return k, _exp["CLASS"][k]
 
     raise ValueError("Could not remap label.")

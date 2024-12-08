@@ -5,6 +5,8 @@ import numpy as np
 from albumentations.pytorch.functional import img_to_tensor
 from PIL import Image
 
+from data.experiments import EXP1,EXP2
+
 
 class Dataset(data.Dataset):
     def __init__(self,
@@ -12,6 +14,7 @@ class Dataset(data.Dataset):
                  classes: int,
                  transform=None,
                  img_normalization=None,
+                 #exp:
                  mode: str = "train",
                  filter_mislabeled: bool = False):
 
@@ -26,6 +29,10 @@ class Dataset(data.Dataset):
         self.sample_list = []
         self.mode = mode
         self.num_classes = classes
+        if classes == 19 :
+           self.EXP = EXP1
+        elif classes == 2 :
+           self.EXP = EXP2
         self.normalization = img_normalization
         self.transform = transform
 
@@ -99,8 +106,24 @@ class Dataset(data.Dataset):
             img = self.normalization(image=img)['image']
 
         img = img_to_tensor(img)
-        mask = torch.from_numpy(mask)
+        # mask = torch.from_numpy(mask)
 
+        # mapping original labels to new class labels according to different exp
+        _cls = []
+        class_remapping = self.EXP["LABEL"]
+        for key, val in class_remapping.items():
+            for cls in val:
+                _cls.append(cls)
+        assert len(_cls) == len(set(_cls))
+        N = max(len(_cls), mask.max() + 1)
+        remap_array = np.full(N, 255, dtype=np.uint8)
+        for key, val in class_remapping.items():
+            for v in val:
+                remap_array[v] = key
+
+        remap_mask = remap_array[mask]
+
+        mask = torch.from_numpy(remap_mask)
         mask = mask.long().squeeze(0)
 
         return img, mask, file_name
