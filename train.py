@@ -10,7 +10,7 @@ from code_projects.data.experiments import remap_label
 from models.smp_model import model_create
 from code_projects.unitls.before_train import parse_train_args, get_train_info, \
     create_optimizer, create_scheduler
-from torchmetrics.classification import MulticlassAccuracy, MulticlassJaccardIndex, BinaryAccuracy
+from torchmetrics.classification import MulticlassAccuracy, MulticlassJaccardIndex
 from code_projects.unitls.visualization_plot import create_fig, denormalize
 
 

@@ -5,7 +5,7 @@ import numpy as np
 from albumentations.pytorch.functional import img_to_tensor
 from PIL import Image
 
-from data.experiments import EXP1,EXP2
+from code_projects.data.experiments import EXP1,EXP2
 
 
 class Dataset(data.Dataset):
@@ -49,10 +49,10 @@ class Dataset(data.Dataset):
         img_file_list = []
         label_file_list = []
 
-        if mode in ['train', 'val', 'test']:
+        if mode in ['train', 'val', 'test', 'train_di']:
             _path = os.path.join(root, mode)
         else:
-            raise ValueError(f"invalid mode: {mode}, valid values should be ['train', 'val', 'test']")
+            raise ValueError(f"invalid mode: {mode}, valid values should be ['train', 'val', 'test', 'train_di']")
 
         for _, _dir, _file in os.walk(_path):
             for d in _dir:
@@ -109,17 +109,12 @@ class Dataset(data.Dataset):
         # mask = torch.from_numpy(mask)
 
         # mapping original labels to new class labels according to different exp
-        _cls = []
         class_remapping = self.EXP["LABEL"]
-        for key, val in class_remapping.items():
-            for cls in val:
-                _cls.append(cls)
-        assert len(_cls) == len(set(_cls))
-        N = max(len(_cls), mask.max() + 1)
-        remap_array = np.full(N, 255, dtype=np.uint8)
+        remap_array = np.full(256, 255, dtype=np.uint8)
         for key, val in class_remapping.items():
             for v in val:
-                remap_array[v] = key
+                if v == 255:
+                    remap_array[v] = key
 
         remap_mask = remap_array[mask]
 
