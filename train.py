@@ -77,6 +77,10 @@ def main():
         val_miou = 0.
         val_class_miou = torch.zeros(size=(val_dataset.num_classes,)).to(device)
         val_loss = 0.
+        val_nonskin_miou = 0.
+        val_skin_miou = 0.
+        NonSkin_count = 0
+        Skin_count = 0
 
         model.train()
         pbar = tqdm(train_dataloader)
@@ -132,8 +136,6 @@ def main():
 
             print(message)
             logger.info(message)
-            val_nonskin_miou = 0.
-            val_skin_miou = 0.
             tb_writer.add_scalar('train/loss', train_loss / train_step, epoch)
             tb_writer.add_scalar('train/cross_entropy(last step)', ce_score.item(), epoch)
             tb_writer.add_scalar('train/accuracy', train_acc / train_step, epoch)
@@ -147,11 +149,13 @@ def main():
                 if val_dataset.num_classes == 19:
                     if k in [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]:
                         val_nonskin_miou += val_class_miou[k].item()
+                        NonSkin_count  += 1
                     if k in [1, 2]:
                         val_skin_miou += val_class_miou[k].item()
+                        Skin_count += 1
             if val_dataset.num_classes == 19:
-                tb_writer.add_scalar(f"val_classes/mIoU_NonSkin", val_nonskin_miou / val_step, epoch)
-                tb_writer.add_scalar(f"val_classes/mIoU_Skin", val_skin_miou / val_step, epoch)
+                tb_writer.add_scalar(f"val_classes/mIoU_NonSkin", val_nonskin_miou / val_step / NonSkin_count, epoch)
+                tb_writer.add_scalar(f"val_classes/mIoU_Skin", val_skin_miou / val_step / Skin_count, epoch)
             # save the best models
             if val_miou / val_step > best_val:
                 best_val = val_miou / val_step
