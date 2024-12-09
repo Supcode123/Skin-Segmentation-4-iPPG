@@ -8,6 +8,18 @@ from PIL import Image
 from code_projects.data.experiments import EXP1,EXP2
 
 
+def remap_mask(mask: torch.Tensor, exp_dict: dict, ignore_label: int = 255) -> torch.Tensor:
+    class_remapping = exp_dict["LABEL"]
+    remap_array = np.full(256, ignore_label, dtype=np.uint8)
+    for key, val in class_remapping.items():
+        for v in val:
+            remap_array[v] = key
+    mask = mask.int()
+    remap_mask = remap_array[mask]
+    remap_mask_tensor = torch.from_numpy(remap_mask)
+    return remap_mask_tensor
+
+
 class Dataset(data.Dataset):
     def __init__(self,
                  root: str,
@@ -106,19 +118,8 @@ class Dataset(data.Dataset):
             img = self.normalization(image=img)['image']
 
         img = img_to_tensor(img)
-        # mask = torch.from_numpy(mask)
-
-        # mapping original labels to new class labels according to different exp
-        class_remapping = self.EXP["LABEL"]
-        remap_array = np.full(256, 255, dtype=np.uint8)
-        for key, val in class_remapping.items():
-            for v in val:
-                if v == 255:
-                    remap_array[v] = key
-
-        remap_mask = remap_array[mask]
-
-        mask = torch.from_numpy(remap_mask)
+        mask = torch.from_numpy(mask)
+        mask = remap_mask(mask,self.EXP)
         mask = mask.long().squeeze(0)
 
         return img, mask, file_name
