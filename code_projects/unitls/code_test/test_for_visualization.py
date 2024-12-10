@@ -11,7 +11,7 @@ np.random.seed(42)
 
 batch_size =4
 height, width = 128, 128
-num_classes = 19
+num_classes = 2
 
 img_batch = torch.rand(batch_size, 3, height, width)
 
@@ -24,6 +24,6 @@ print("Input Image Batch Shape:", img_batch.shape)
 print("Ground Truth Mask Batch Shape:", gt_mask_batch.shape)
 print("Predicted Mask Batch Shape:", pred_mask_batch.shape)
 
-fig = create_fig(pred_mask_batch, gt_mask_batch, img_batch)
+fig = create_fig(pred_mask_batch, gt_mask_batch, img_batch, num_classes)
 
 plt.show()

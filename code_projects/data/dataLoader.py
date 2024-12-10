@@ -37,7 +37,7 @@ def data_load(root: str, train_info: dict, data_info: dict):
                                     p=0.3),
                             ]),
                             img_normalization=A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                            mode='train',
+                            mode= train_info["MODE"],
                             filter_mislabeled=data_info['FILTER_MISLABELED'])
 
     train_dataloader = DataLoader(train_dataset,

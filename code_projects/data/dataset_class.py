@@ -5,6 +5,20 @@ import numpy as np
 from albumentations.pytorch.functional import img_to_tensor
 from PIL import Image
 
+from code_projects.data.experiments import EXP1,EXP2
+
+
+def remap_mask(mask: torch.Tensor, exp_dict: dict, ignore_label: int = 255) -> torch.Tensor:
+    class_remapping = exp_dict["LABEL"]
+    remap_array = np.full(256, ignore_label, dtype=np.uint8)
+    for key, val in class_remapping.items():
+        for v in val:
+            remap_array[v] = key
+    mask = mask.int()
+    remap_mask = remap_array[mask]
+    remap_mask_tensor = torch.from_numpy(remap_mask)
+    return remap_mask_tensor
+
 
 class Dataset(data.Dataset):
     def __init__(self,
@@ -12,6 +26,7 @@ class Dataset(data.Dataset):
                  classes: int,
                  transform=None,
                  img_normalization=None,
+                 #exp:
                  mode: str = "train",
                  filter_mislabeled: bool = False):
 
@@ -26,6 +41,10 @@ class Dataset(data.Dataset):
         self.sample_list = []
         self.mode = mode
         self.num_classes = classes
+        if classes == 19 :
+           self.EXP = EXP1
+        elif classes == 2 :
+           self.EXP = EXP2
         self.normalization = img_normalization
         self.transform = transform
 
@@ -42,10 +61,10 @@ class Dataset(data.Dataset):
         img_file_list = []
         label_file_list = []
 
-        if mode in ['train', 'val', 'test']:
+        if mode in ['train', 'val', 'test', 'train_di']:
             _path = os.path.join(root, mode)
         else:
-            raise ValueError(f"invalid mode: {mode}, valid values should be ['train', 'val', 'test']")
+            raise ValueError(f"invalid mode: {mode}, valid values should be ['train', 'val', 'test', 'train_di']")
 
         for _, _dir, _file in os.walk(_path):
             for d in _dir:
@@ -100,7 +119,7 @@ class Dataset(data.Dataset):
 
         img = img_to_tensor(img)
         mask = torch.from_numpy(mask)
-
+        mask = remap_mask(mask,self.EXP)
         mask = mask.long().squeeze(0)
 
         return img, mask, file_name
