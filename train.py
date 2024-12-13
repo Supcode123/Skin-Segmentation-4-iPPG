@@ -80,14 +80,10 @@ def main():
         val_class_miou = torch.zeros(size=(val_dataset.num_classes,)).to(device)
         val_loss = 0.
         val_acc = 0.
-        val_nonskin_miou = 0.
-        val_skin_miou = 0.
-        NonSkin_count = 0
-        Skin_count = 0
 
         model.train()
         pbar = tqdm(train_dataloader)
-        train_step = 0
+        
         for train_step, (sample, label, _) in enumerate(pbar, start=1):
             pbar.set_description(f"epoch: {epoch + 1}/{num_epochs}")
             sample, label = sample.to(device), label.to(device)
@@ -157,7 +153,7 @@ def main():
                 # ,exp=val_dataset.exp_id
                 tb_writer.add_scalar(f"val_classes/mIoU_{label_name}",
                                      val_class_miou[k].item() / len(val_dataloader), epoch+1)
-               
+
             # save the best models
             if val_miou / len(val_dataloader) > best_val:
                 best_val = val_miou / len(val_dataloader)
