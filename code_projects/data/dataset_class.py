@@ -41,7 +41,7 @@ class Dataset(data.Dataset):
         self.sample_list = []
         self.mode = mode
         self.num_classes = classes
-        if classes == 19 :
+        if classes == 18 :
            self.EXP = EXP1
         elif classes == 2 :
            self.EXP = EXP2

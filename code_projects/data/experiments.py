@@ -17,7 +17,7 @@ EXP1 = {"LABEL": {
     15: [15],
     16: [16],
     17: [17],
-    18: [18],
+    #18: [18],
     255: [255],
 },
     "CLASS": {
@@ -39,13 +39,13 @@ EXP1 = {"LABEL": {
         15: 'Clothing',
         16: 'Glasses',
         17: 'Headwear',
-        18: 'Facewear',
+        # 18: 'Facewear',
         255: "Ignore",
     }
 }
 
 EXP2 = {"LABEL": {
-    0: [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+    0: [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
     1: [1, 2],
     255: [255],
 },
@@ -59,7 +59,7 @@ EXP2 = {"LABEL": {
 def remap_label(label: int, classes: int):  # -> (int, str):
 
     """ Returns remapped label id and label name given label and exp id."""
-    if classes == 19 :
+    if classes == 18 :
         _exp = EXP1
     elif classes == 2 :
         _exp = EXP2

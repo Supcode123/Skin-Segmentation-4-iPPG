@@ -12,6 +12,7 @@ from code_projects.unitls.before_train import parse_train_args, get_train_info, 
     create_optimizer, create_scheduler
 from torchmetrics.classification import MulticlassAccuracy, MulticlassJaccardIndex
 from code_projects.unitls.visualization_plot import create_fig, denormalize
+from unitls.early_stopping import EarlyStopping
 
 
 def main():
@@ -50,8 +51,7 @@ def main():
     # if train_dataset.num_classes  == 2:
     #    acc = BinaryAccuracy(ignore_index=train_config['IGNORE_LABEL']).to(device)
 
-
-    scheduler = create_scheduler(optimizer, train_config)
+    scheduler = create_scheduler(optimizer, train_config, len(train_dataloader))
 
     # Log graph of models
     im = torch.zeros((1, 3, 256, 256), device=device)
@@ -70,6 +70,8 @@ def main():
     num_epochs = train_config["MAX_EPOCH"]
     best_val = 0
 
+    early_stopping = EarlyStopping(patience=10, min_delta=0.0001, verbose=True)
+
     for epoch in range(start_epoch, num_epochs):
         epoch_start_time = time.time()
         train_acc = 0.
@@ -77,6 +79,7 @@ def main():
         val_miou = 0.
         val_class_miou = torch.zeros(size=(val_dataset.num_classes,)).to(device)
         val_loss = 0.
+        val_acc = 0.
         val_nonskin_miou = 0.
         val_skin_miou = 0.
         NonSkin_count = 0
@@ -84,7 +87,7 @@ def main():
 
         model.train()
         pbar = tqdm(train_dataloader)
-        # train_step = 0
+        train_step = 0
         for train_step, (sample, label, _) in enumerate(pbar, start=1):
             pbar.set_description(f"epoch: {epoch + 1}/{num_epochs}")
             sample, label = sample.to(device), label.to(device)
@@ -112,7 +115,6 @@ def main():
         scheduler.step()
 
         model.eval()
-        val_step = 0
         with torch.no_grad():
             for val_step, (sample, label, _) in enumerate(val_dataloader, start=1):
                 # print(f"Validation step: {val_step}")
@@ -122,43 +124,43 @@ def main():
                 # val_lovasz_score = lovasz_softmax(val_pred, label, ignore=train_config['IGNORE_LABEL']) * lovasz_weighting
                 batch_loss = val_ce_score  # + val_lovasz_score  + val_f_tv_score
                 val_loss += batch_loss.item()
-
+                val_acc += acc(val_pred, label).item()
                 # val_pred_label = torch.argmax(val_pred, dim=1).cpu()
                 miou_score = class_miou(val_pred, label)
                 val_miou += miou_score.mean().item()
                 val_class_miou += miou_score
+
             message = '[%03d/%03d] %2.2f sec(s) lr: %f Train Acc: %3.6f Loss: %3.6f | Val Acc(M-IoU): %3.6f loss: %3.6f' % \
                       (epoch + 1, num_epochs, time.time() - epoch_start_time, optimizer.param_groups[0]['lr'],
-                       train_acc / train_step,
-                       train_loss / train_step,
-                       val_miou / val_step,
-                       val_loss / val_step)
+                       train_acc / len(train_dataloader),
+                       train_loss / len(train_dataloader),
+                       val_miou / len(val_dataloader),
+                       val_loss / len(val_dataloader))
+
+            early_stopping(val_loss / len(val_dataloader))
+            if early_stopping.early_stop:
+                print(f"Training stopped early at epoch {epoch + 1}")
+                break
 
             print(message)
             logger.info(message)
-            tb_writer.add_scalar('train/loss', train_loss / train_step, epoch)
-            tb_writer.add_scalar('train/cross_entropy(last step)', ce_score.item(), epoch)
-            tb_writer.add_scalar('train/accuracy', train_acc / train_step, epoch)
-            tb_writer.add_scalar('train/learning_rate', optimizer.param_groups[0]['lr'], epoch)
-            tb_writer.add_scalar('val/loss', val_loss / val_step, epoch)
-            tb_writer.add_scalar('val/cross_entropy(last step)', val_ce_score.item(), epoch)
-            tb_writer.add_scalar('val/mIoU', val_miou / val_step, epoch)
+            tb_writer.add_scalar('train/loss', train_loss / len(train_dataloader), epoch+1)
+            # tb_writer.add_scalar('train/cross_entropy(last step)', ce_score.item(), epoch)
+            tb_writer.add_scalar('train/accuracy', train_acc / len(train_dataloader), epoch+1)
+            tb_writer.add_scalar('train/learning_rate', optimizer.param_groups[0]['lr'], epoch+1)
+            tb_writer.add_scalar('val/loss', val_loss / len(val_dataloader), epoch+1)
+            tb_writer.add_scalar('val/accuracy', val_acc / len(val_dataloader), epoch+1)
+            # tb_writer.add_scalar('val/cross_entropy(last step)', val_ce_score.item(), epoch)
+            tb_writer.add_scalar('val/mIoU', val_miou / len(val_dataloader), epoch+1)
             for k in range(val_dataset.num_classes):
-                remapped_label, label_name = remap_label(label=k,classes=val_dataset.num_classes)  # ,exp=val_dataset.exp_id
-                tb_writer.add_scalar(f"val_classes/mIoU_{label_name}", val_class_miou[k].item() / val_step, epoch)
-                if val_dataset.num_classes == 19:
-                    if k in [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]:
-                        val_nonskin_miou += val_class_miou[k].item()
-                        NonSkin_count  += 1
-                    if k in [1, 2]:
-                        val_skin_miou += val_class_miou[k].item()
-                        Skin_count += 1
-            if val_dataset.num_classes == 19:
-                tb_writer.add_scalar(f"val_classes/mIoU_NonSkin", val_nonskin_miou / val_step / NonSkin_count, epoch)
-                tb_writer.add_scalar(f"val_classes/mIoU_Skin", val_skin_miou / val_step / Skin_count, epoch)
+                remapped_label, label_name = remap_label(label=k,classes=val_dataset.num_classes)
+                # ,exp=val_dataset.exp_id
+                tb_writer.add_scalar(f"val_classes/mIoU_{label_name}",
+                                     val_class_miou[k].item() / len(val_dataloader), epoch+1)
+               
             # save the best models
-            if val_miou / val_step > best_val:
-                best_val = val_miou / val_step
+            if val_miou / len(val_dataloader) > best_val:
+                best_val = val_miou / len(val_dataloader)
 
                 print("save models: Processing...")
                 torch.save(model.state_dict(), os.path.join(output_dir, 'model_checkpoint.pt'))
@@ -177,6 +179,7 @@ def main():
                            data_config["CLASSES"])
                 plt.savefig(os.path.join(output_dir, f'example_plot_epoch{epoch + 1}_batch{val_step}.png'))
                 plt.close()
+
 
 
 if __name__ == '__main__':

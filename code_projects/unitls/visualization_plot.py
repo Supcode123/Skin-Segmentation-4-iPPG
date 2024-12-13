@@ -84,7 +84,7 @@ def remap_original(mask):
         15: [15],
         16: [16],
         17: [17],
-        18: [18],
+        # 18: [18],
     }
     classes_exp = {
         0: 'Background',
@@ -105,7 +105,7 @@ def remap_original(mask):
         15: 'Clothing',
         16: 'Glasses',
         17: 'Headwear',
-        18: 'Facewear',
+       # 18: 'Facewear',
     }
     colormap = get_remapped_colormap(class_remapping_exp)
     remapped_mask = remap_mask(mask, class_remapping=class_remapping_exp)
@@ -115,7 +115,7 @@ def remap_original(mask):
 def remap_simple(mask):
     """Remap mask which smplified classes"""
     class_remapping_exp = {
-         0: [0,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
+         0: [0,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17],
          1: [1,2],
     }
 
@@ -271,24 +271,24 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor, img_b
     # for i, title in enumerate(col_titles):
     #     fig.text(0.1 + i * 0.25, 1.0, title, ha='center', va='center', fontsize=12)
     for n in range(N):
-        if cls == 19 :
+        if cls == 18 :
             # with 19 classes
-            remapped_pred_mask_19, classes_19, colormap_19 = remap_original(pred_mask_batch[n, ...].cpu().numpy())
+            remapped_pred_mask_18, classes_18, colormap_18 = remap_original(pred_mask_batch[n, ...].cpu().numpy())
             remapped_gt_mask, _, _ = remap_original(gt_mask_batch[n, ...].cpu().numpy())
             # with 2 classes
             remapped_pred_mask_2, classes_2, colormap_2 = remap_simple(pred_mask_batch[n, ...].cpu().numpy())
 
-            pred_mask_rgb_19 = mask_to_colormap(remapped_pred_mask_19, colormap=colormap_19)
+            pred_mask_rgb_18 = mask_to_colormap(remapped_pred_mask_18, colormap=colormap_18)
             pred_mask_rgb_2 = mask_to_colormap(remapped_pred_mask_2, colormap=colormap_2)
-            gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap_19)
+            gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap_18)
             img = img_batch[n, ...].permute(1, 2, 0).cpu().numpy()
             # image
             ax = fig.add_subplot(N, 4, n * 4 + 1, xticks=[], yticks=[])
             ax.imshow(img)
             # ground truth mask
-            subplot(fig, [N, 4, n * 4 + 2], remapped_gt_mask, gt_mask_rgb, colormap_19, classes_19)
+            subplot(fig, [N, 4, n * 4 + 2], remapped_gt_mask, gt_mask_rgb, colormap_18, classes_18)
             # predicted mask with 19 classes
-            subplot(fig, [N, 4, n * 4 + 3], remapped_pred_mask_19, pred_mask_rgb_19, colormap_19, classes_19)
+            subplot(fig, [N, 4, n * 4 + 3], remapped_pred_mask_18, pred_mask_rgb_18, colormap_18, classes_18)
             # remapped the predicted mask with 2 classes
             subplot(fig, [N, 4, n * 4 + 4], remapped_pred_mask_2, pred_mask_rgb_2, colormap_2, classes_2)
 

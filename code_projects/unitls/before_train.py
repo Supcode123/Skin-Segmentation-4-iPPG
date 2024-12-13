@@ -98,7 +98,7 @@ def create_optimizer(model: torch.nn.Module, train_info: dict):
     return optimizer
 
 
-def create_scheduler(optimizer, train_info: dict):
+def create_scheduler(optimizer, train_info: dict, step_size: int):
     """ Creates scheduler instance from config. """
 
     name = train_info["SCHEDULER"]
@@ -107,7 +107,7 @@ def create_scheduler(optimizer, train_info: dict):
     if name.upper() == "POLYNOMIALLR":
         scheduler = PolynomialLR(
             optimizer=optimizer,
-            step_size=1,
+            step_size=step_size,
             iter_warmup=train_info["WARMUP_LR"],
             iter_max=train_info["MAX_EPOCH"],
             power=train_info["POWER"],
