@@ -21,7 +21,7 @@ class EarlyStopping:
         if self.best_score is None:
             self.best_score = current_score
         else:
-            improvement = self.best_score - current_score
+            improvement = current_score - self.best_score
             if improvement > self.min_delta:
                 self.best_score = current_score
                 self.counter = 0  # reset the counter

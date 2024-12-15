@@ -61,10 +61,10 @@ class Dataset(data.Dataset):
         img_file_list = []
         label_file_list = []
 
-        if mode in ['train', 'val', 'test', 'train_di']:
+        if mode in ['train', 'val', 'test']:
             _path = os.path.join(root, mode)
         else:
-            raise ValueError(f"invalid mode: {mode}, valid values should be ['train', 'val', 'test', 'train_di']")
+            raise ValueError(f"invalid mode: {mode}, valid values should be ['train', 'val', 'test']")
 
         for _, _dir, _file in os.walk(_path):
             for d in _dir:

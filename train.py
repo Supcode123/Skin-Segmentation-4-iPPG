@@ -10,9 +10,10 @@ from code_projects.data.experiments import remap_label
 from models.smp_model import model_create
 from code_projects.unitls.before_train import parse_train_args, get_train_info, \
     create_optimizer, create_scheduler
-from torchmetrics.classification import MulticlassAccuracy, MulticlassJaccardIndex
 from code_projects.unitls.visualization_plot import create_fig, denormalize
-from unitls.early_stopping import EarlyStopping
+from code_projects.unitls.early_stopping import EarlyStopping
+from code_projects.unitls.score_cal import accuracy, loss_cal, miou_cal
+from code_projects.unitls.csv_create import csv_file
 
 
 def main():
@@ -39,19 +40,16 @@ def main():
 
     optimizer = create_optimizer(model, train_config)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=train_config['IGNORE_LABEL'])
-    # elif train_dataset.num_classes == 2:
-    #     criterion = nn.BCEWithLogitsLoss(reduction='none')
+    # criterion = nn.CrossEntropyLoss(ignore_index=train_config['IGNORE_LABEL'])
     # tv_loss = FocalTverskyLoss(num_classes=train_dataset.num_classes).to(device)
 
-    acc = MulticlassAccuracy(num_classes=train_dataset.num_classes,
-                                ignore_index=train_config['IGNORE_LABEL']).to(device)
-    class_miou = MulticlassJaccardIndex(num_classes=train_dataset.num_classes,
-                                        ignore_index=255, average='none').to(device)
+    # acc = MulticlassAccuracy(num_classes=train_dataset.num_classes,
+                                #ignore_index=train_config['IGNORE_LABEL']).to(device)
+    # class_miou = MulticlassJaccardIndex(num_classes=train_dataset.num_classes,
+                                        # ignore_index=255, average='none').to(device)
     # if train_dataset.num_classes  == 2:
     #    acc = BinaryAccuracy(ignore_index=train_config['IGNORE_LABEL']).to(device)
-
-    scheduler = create_scheduler(optimizer, train_config, len(train_dataloader))
+    scheduler = create_scheduler(optimizer, train_config)
 
     # Log graph of models
     im = torch.zeros((1, 3, 256, 256), device=device)
@@ -70,38 +68,30 @@ def main():
     num_epochs = train_config["MAX_EPOCH"]
     best_val = 0
 
-    early_stopping = EarlyStopping(patience=10, min_delta=0.0001, verbose=True)
+    early_stopping = EarlyStopping(patience=20, min_delta=0.0001, verbose=True)
 
     for epoch in range(start_epoch, num_epochs):
         epoch_start_time = time.time()
         train_acc = 0.
         train_loss = 0.
         val_miou = 0.
-        val_class_miou = torch.zeros(size=(val_dataset.num_classes,)).to(device)
+        val_skin_miou = torch.tensor(0.0, dtype=torch.float32).to(device)
         val_loss = 0.
-        val_acc = 0.
 
         model.train()
         pbar = tqdm(train_dataloader)
-        
+
         for train_step, (sample, label, _) in enumerate(pbar, start=1):
             pbar.set_description(f"epoch: {epoch + 1}/{num_epochs}")
             sample, label = sample.to(device), label.to(device)
             optimizer.zero_grad()
             train_pred = model(sample)
-
-            # create a mask, ignoring the 255 category
-            ce_score = criterion(train_pred, label)  # * ce_weighting
-                # f_tv_score = tv_loss(train_pred, label) * f_tv_weighting
-                # lovasz_score = lovasz_softmax(train_pred, label, ignore=train_config['IGNORE_LABEL']) * lovasz_weighting
-            batch_loss = ce_score  # + lovasz_score  + f_tv_score
+            batch_loss = loss_cal(train_pred, label, train_dataset.num_classes, train_config["IGNORE_LABEL"])
             batch_loss.backward()
             optimizer.step()
             with torch.no_grad():
-                # probab = torch.sigmoid(train_pred)
-                # predict = probab >= 0.5
-                #train_acc += acc(predict.float(), label).item()
-                train_acc += acc(train_pred, label).item()
+                train_acc, _ = accuracy(train_pred, label, train_dataset.num_classes, device)
+                train_acc += train_acc.item()
             train_loss += batch_loss.item()
 
         # learn rate scheduler
@@ -116,43 +106,41 @@ def main():
                 # print(f"Validation step: {val_step}")
                 sample, label = sample.to(device), label.to(device)
                 val_pred = model(sample)
-                val_ce_score = criterion(val_pred, label)  # * ce_weighting
-                # val_lovasz_score = lovasz_softmax(val_pred, label, ignore=train_config['IGNORE_LABEL']) * lovasz_weighting
-                batch_loss = val_ce_score  # + val_lovasz_score  + val_f_tv_score
+                batch_loss = loss_cal(val_pred, label, val_dataset.num_classes, train_config["IGNORE_LABEL"])
+                val_acc, val_skin_acc = accuracy(val_pred, label, val_dataset.num_classes, device)
+                val_acc += val_acc.item()
+                val_skin_acc += val_skin_acc.item()
                 val_loss += batch_loss.item()
-                val_acc += acc(val_pred, label).item()
-                # val_pred_label = torch.argmax(val_pred, dim=1).cpu()
-                miou_score = class_miou(val_pred, label)
+                miou_score, skin_miou = miou_cal(val_pred, label, val_dataset.num_classes, device)
                 val_miou += miou_score.mean().item()
-                val_class_miou += miou_score
+                val_skin_miou += skin_miou.item()
 
-            message = '[%03d/%03d] %2.2f sec(s) lr: %f Train Acc: %3.6f Loss: %3.6f | Val Acc(M-IoU): %3.6f loss: %3.6f' % \
+            early_stopping(val_miou / len(val_dataloader))
+            if early_stopping.early_stop:
+                print(f"Training stopped early at epoch {epoch + 1}")
+                # save final acc, m_iou data to compare
+                csv_file(args.log_path, val_skin_acc/len(val_dataloader), val_miou/len(val_dataloader),
+                         val_skin_miou/len(val_dataloader), val_dataset.num_classes)
+                break
+
+            message = '[%03d/%03d] %2.2f sec(s) lr: %f Train Acc: %3.6f Loss: %3.6f | Val loss: %3.6f M-IoU: %3.6f' % \
                       (epoch + 1, num_epochs, time.time() - epoch_start_time, optimizer.param_groups[0]['lr'],
                        train_acc / len(train_dataloader),
                        train_loss / len(train_dataloader),
-                       val_miou / len(val_dataloader),
-                       val_loss / len(val_dataloader))
-
-            early_stopping(val_loss / len(val_dataloader))
-            if early_stopping.early_stop:
-                print(f"Training stopped early at epoch {epoch + 1}")
-                break
+                       val_loss / len(val_dataloader),
+                       val_miou / len(val_dataloader))
 
             print(message)
             logger.info(message)
+
             tb_writer.add_scalar('train/loss', train_loss / len(train_dataloader), epoch+1)
             # tb_writer.add_scalar('train/cross_entropy(last step)', ce_score.item(), epoch)
             tb_writer.add_scalar('train/accuracy', train_acc / len(train_dataloader), epoch+1)
             tb_writer.add_scalar('train/learning_rate', optimizer.param_groups[0]['lr'], epoch+1)
             tb_writer.add_scalar('val/loss', val_loss / len(val_dataloader), epoch+1)
-            tb_writer.add_scalar('val/accuracy', val_acc / len(val_dataloader), epoch+1)
-            # tb_writer.add_scalar('val/cross_entropy(last step)', val_ce_score.item(), epoch)
+            tb_writer.add_scalar('val/accuracy', val_acc / len(train_dataloader), epoch+1)
             tb_writer.add_scalar('val/mIoU', val_miou / len(val_dataloader), epoch+1)
-            for k in range(val_dataset.num_classes):
-                remapped_label, label_name = remap_label(label=k,classes=val_dataset.num_classes)
-                # ,exp=val_dataset.exp_id
-                tb_writer.add_scalar(f"val_classes/mIoU_{label_name}",
-                                     val_class_miou[k].item() / len(val_dataloader), epoch+1)
+
 
             # save the best models
             if val_miou / len(val_dataloader) > best_val:
@@ -163,6 +151,8 @@ def main():
                 torch.save(optimizer.state_dict(), os.path.join(output_dir, 'optim_checkpoint.pt'))
                 torch.save(scheduler.state_dict(), os.path.join(output_dir, 'scheduler_checkpoint.pt'))
                 print("save models: done!")
+
+
 
                 # Make example plot
                 val_pred = torch.argmax(val_pred, dim=1)
@@ -175,7 +165,6 @@ def main():
                            data_config["CLASSES"])
                 plt.savefig(os.path.join(output_dir, f'example_plot_epoch{epoch + 1}_batch{val_step}.png'))
                 plt.close()
-
 
 
 if __name__ == '__main__':

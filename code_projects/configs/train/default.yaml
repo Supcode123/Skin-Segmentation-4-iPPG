@@ -4,6 +4,7 @@ WORKERS: 8
 MODE: train # train_di
 
 OPTIMIZER: AdamW
+STEPSIZE: 1
 BASE_LR: 0.00001 # 0.00002
 #MOMENTUM: 0.9
 WEIGHT_DECAY: 0.001 # 0.0001
@@ -15,6 +16,7 @@ SCHEDULER: PolynomialLR  # PolynomialLR  # ReduceLROnPlateau  # ExponentialLR
 WARMUP_LR: 0.0
 MIN_LR: 0.00001 # 0.000001
 MAX_EPOCH: 1 #500
+MAX_ITER: 140
 POWER: 0.3
 
 OPTIMIZER_FORM: single

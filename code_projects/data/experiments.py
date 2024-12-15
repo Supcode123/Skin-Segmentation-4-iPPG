@@ -17,7 +17,6 @@ EXP1 = {"LABEL": {
     15: [15],
     16: [16],
     17: [17],
-    #18: [18],
     255: [255],
 },
     "CLASS": {
@@ -39,7 +38,6 @@ EXP1 = {"LABEL": {
         15: 'Clothing',
         16: 'Glasses',
         17: 'Headwear',
-        # 18: 'Facewear',
         255: "Ignore",
     }
 }
