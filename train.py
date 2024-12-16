@@ -66,17 +66,19 @@ def main():
     print("##### Training")
 
     num_epochs = train_config["MAX_EPOCH"]
-    best_val = 0
+    best_val = 0.
 
-    early_stopping = EarlyStopping(patience=20, min_delta=0.0001, verbose=True)
+    # early_stopping = EarlyStopping(patience=10, min_delta=0.0001, verbose=True)
 
     for epoch in range(start_epoch, num_epochs):
         epoch_start_time = time.time()
         train_acc = 0.
         train_loss = 0.
         val_miou = 0.
-        val_skin_miou = torch.tensor(0.0, dtype=torch.float32).to(device)
+        val_acc = 0.
+        val_skin_miou = 0.
         val_loss = 0.
+        val_skin_acc = 0.
 
         model.train()
         pbar = tqdm(train_dataloader)
@@ -107,21 +109,13 @@ def main():
                 sample, label = sample.to(device), label.to(device)
                 val_pred = model(sample)
                 batch_loss = loss_cal(val_pred, label, val_dataset.num_classes, train_config["IGNORE_LABEL"])
-                val_acc, val_skin_acc = accuracy(val_pred, label, val_dataset.num_classes, device)
-                val_acc += val_acc.item()
-                val_skin_acc += val_skin_acc.item()
+                val_accuracy, val_skin_accuracy = accuracy(val_pred, label, val_dataset.num_classes, device)
+                val_acc += val_accuracy.item()
+                val_skin_acc += val_skin_accuracy.item()
                 val_loss += batch_loss.item()
                 miou_score, skin_miou = miou_cal(val_pred, label, val_dataset.num_classes, device)
                 val_miou += miou_score.mean().item()
                 val_skin_miou += skin_miou.item()
-
-            early_stopping(val_miou / len(val_dataloader))
-            if early_stopping.early_stop:
-                print(f"Training stopped early at epoch {epoch + 1}")
-                # save final acc, m_iou data to compare
-                csv_file(args.log_path, val_skin_acc/len(val_dataloader), val_miou/len(val_dataloader),
-                         val_skin_miou/len(val_dataloader), val_dataset.num_classes)
-                break
 
             message = '[%03d/%03d] %2.2f sec(s) lr: %f Train Acc: %3.6f Loss: %3.6f | Val loss: %3.6f M-IoU: %3.6f' % \
                       (epoch + 1, num_epochs, time.time() - epoch_start_time, optimizer.param_groups[0]['lr'],
@@ -129,33 +123,36 @@ def main():
                        train_loss / len(train_dataloader),
                        val_loss / len(val_dataloader),
                        val_miou / len(val_dataloader))
-
             print(message)
             logger.info(message)
 
-            tb_writer.add_scalar('train/loss', train_loss / len(train_dataloader), epoch+1)
-            # tb_writer.add_scalar('train/cross_entropy(last step)', ce_score.item(), epoch)
-            tb_writer.add_scalar('train/accuracy', train_acc / len(train_dataloader), epoch+1)
-            tb_writer.add_scalar('train/learning_rate', optimizer.param_groups[0]['lr'], epoch+1)
-            tb_writer.add_scalar('val/loss', val_loss / len(val_dataloader), epoch+1)
-            tb_writer.add_scalar('val/accuracy', val_acc / len(train_dataloader), epoch+1)
-            tb_writer.add_scalar('val/mIoU', val_miou / len(val_dataloader), epoch+1)
+            current_score = val_miou / len(val_dataloader)
+            improvement = current_score - best_val
+            if improvement > train_config["THRESHOLD"]:  # improve,better
+                best_val = current_score
+                counter = 0  # reset the counter
 
+                tb_writer.add_scalar('train/loss', train_loss / len(train_dataloader), epoch + 1)
+                # tb_writer.add_scalar('train/cross_entropy(last step)', ce_score.item(), epoch)
+                tb_writer.add_scalar('train/accuracy', train_acc / len(train_dataloader), epoch + 1)
+                tb_writer.add_scalar('train/learning_rate', optimizer.param_groups[0]['lr'], epoch + 1)
+                tb_writer.add_scalar('val/loss', val_loss / len(val_dataloader), epoch + 1)
+                tb_writer.add_scalar('val/accuracy', val_acc / len(train_dataloader), epoch + 1)
+                tb_writer.add_scalar('val/mIoU', val_miou / len(val_dataloader), epoch + 1)
 
-            # save the best models
-            if val_miou / len(val_dataloader) > best_val:
-                best_val = val_miou / len(val_dataloader)
-
+                # save the best models
                 print("save models: Processing...")
                 torch.save(model.state_dict(), os.path.join(output_dir, 'model_checkpoint.pt'))
                 torch.save(optimizer.state_dict(), os.path.join(output_dir, 'optim_checkpoint.pt'))
                 torch.save(scheduler.state_dict(), os.path.join(output_dir, 'scheduler_checkpoint.pt'))
                 print("save models: done!")
 
-
-
                 # Make example plot
-                val_pred = torch.argmax(val_pred, dim=1)
+                if val_dataset.num_classes == 18:
+                    val_pred = torch.argmax(val_pred, dim=1)
+                if val_dataset.num_classes == 2:
+                    val_pred = (torch.sigmoid(val_pred) > 0.5).int().squeeze(1)
+
                 # Only saving max. 4 examples
                 max_ind = min(4, val_pred.shape[0])
                 # max_ind = val_pred.shape[0]
@@ -163,8 +160,18 @@ def main():
                            label[:max_ind, ...],
                            denormalize(sample[:max_ind, ...], [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
                            data_config["CLASSES"])
-                plt.savefig(os.path.join(output_dir, f'example_plot_epoch{epoch + 1}_batch{val_step}.png'))
+                plt.savefig(os.path.join(output_dir, f'example_plot.png'))
                 plt.close()
+                # save final acc, m_iou data to compare
+                csv_file(args.log_path, val_skin_acc / len(val_dataloader), val_miou / len(val_dataloader),
+                         val_skin_miou / len(val_dataloader), val_dataset.num_classes)
+
+            else:       # equal or worse
+                counter += 1
+                print(f"No improvement for {counter} epochs")
+                if counter >= train_config["PATIENCE"]:      # reach the limit times
+                    print(f"Training stopped early at epoch {epoch + 1}")
+                    break
 
 
 if __name__ == '__main__':

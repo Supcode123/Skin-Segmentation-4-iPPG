@@ -5,26 +5,38 @@ import os
 
 def csv_file(path, accuracy, miou, miou_skin, classes):
 
-    file_name = "Multi/Binary.csv"
-    file_exists = os.path.isfile(os.path.join(path, file_name))
+    file_name = "Multi_Binary.csv"
+    file_path = os.path.join(path, file_name)
+    file_exists = os.path.isfile(file_path)
+    # os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-    data = []
-    header = ["timestamp", "Model", "PA(%)", "IoU(Skin)", "IoU(Non_Skin)"]
-    data[0] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    data = [
+        datetime.now().strftime("%m-%d %H:%M:%S"),  # Timestamp
+        "Multi_labels(merge)" if classes == 18 else "Binary",  # Model
+        accuracy,  # PA(%)
+        miou,  # IoU(total)
+        miou_skin  # IoU(Non_Skin)
+    ]
+    header = ["timestamp", "Model", "PA(%)", "M_IoU", "M_IoU(Skin)"]
 
-    if classes == 18:
-        data[1] = "Multi_labels(merge)"
-    if classes == 2:
-        data[1] = "Binary"
+    if file_exists:
+        with open(file_path, "r") as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+        model_found = False
+        for i, row in enumerate(rows):
+            if row and row[1] == data[1]:
+                rows[i] = data
+                model_found = True
+                break
 
-    data[2] = accuracy.item()
-    data[3] = miou.item()
-    data[4] = miou_skin.item()
+        if not model_found:
+            rows.append(data)
+    else:
+        rows = [header, data]
 
-    with open(file_name, "a", newline="") as f:
-         writer = csv.writer(f)
-         if not file_exists:
-             writer.writerow(header)
-         writer.writerow(data)
+    with open(file_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(rows)
 
     print("csv_file saved.")

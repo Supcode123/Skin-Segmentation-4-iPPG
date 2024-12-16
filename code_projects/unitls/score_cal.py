@@ -11,7 +11,7 @@ def accuracy(pred: torch.Tensor, gth: torch.Tensor, classes: int, device):
         output = torch.softmax(pred, dim=1)  # [batch_size, num_classes, H, W]
         # count the number of correctly classified pixels
         correct_pixels = ((output.argmax(1) == gth) * mask).sum().float()
-        acc= correct_pixels / total_pixels
+        acc = correct_pixels / total_pixels
 
         # probability of merging skin classes
         skin_classes = [1, 2]
@@ -23,10 +23,12 @@ def accuracy(pred: torch.Tensor, gth: torch.Tensor, classes: int, device):
         acc_skin = correct_skin_pixels / total_pixels
 
     elif classes == 2:
-        output = (torch.sigmoid(pred) > 0.5).float()
+        output = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
         correct = ((output == gth) * mask).sum().float()
-        acc= correct / total_pixels
-        acc_skin = acc
+        acc = correct / total_pixels
+        total_skin = (gth == 1).sum().float()
+        correct_skin_pixels = ((output == gth) * (gth == 1) * mask).sum().float()
+        acc_skin = correct_skin_pixels / total_skin
     else:
         raise ValueError
 
