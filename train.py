@@ -68,7 +68,7 @@ def main():
     num_epochs = train_config["MAX_EPOCH"]
     best_val = 0.
 
-    # early_stopping = EarlyStopping(patience=10, min_delta=0.0001, verbose=True)
+    #early_stopping = EarlyStopping(patience=train_config["PATIENCE"], min_delta=train_config["THRESHOLD"], verbose=True)
 
     for epoch in range(start_epoch, num_epochs):
         epoch_start_time = time.time()
@@ -126,11 +126,13 @@ def main():
             print(message)
             logger.info(message)
 
+            # early_stopping(val_miou / len(val_dataloader))
+            # if early_stopping.early_stop:
+            #     print(f"Training stopped early at epoch {epoch + 1}")
+            #     break
             current_score = val_miou / len(val_dataloader)
-            improvement = current_score - best_val
-            if improvement > train_config["THRESHOLD"]:  # improve,better
+            if current_score > best_val:  # improve,better
                 best_val = current_score
-                counter = 0  # reset the counter
 
                 tb_writer.add_scalar('train/loss', train_loss / len(train_dataloader), epoch + 1)
                 # tb_writer.add_scalar('train/cross_entropy(last step)', ce_score.item(), epoch)
@@ -165,13 +167,6 @@ def main():
                 # save final acc, m_iou data to compare
                 csv_file(args.log_path, val_skin_acc / len(val_dataloader), val_miou / len(val_dataloader),
                          val_skin_miou / len(val_dataloader), val_dataset.num_classes)
-
-            else:       # equal or worse
-                counter += 1
-                print(f"No improvement for {counter} epochs")
-                if counter >= train_config["PATIENCE"]:      # reach the limit times
-                    print(f"Training stopped early at epoch {epoch + 1}")
-                    break
 
 
 if __name__ == '__main__':

@@ -16,17 +16,18 @@ def accuracy(pred: torch.Tensor, gth: torch.Tensor, classes: int, device):
         # probability of merging skin classes
         skin_classes = [1, 2]
         # [batch_size,len(skin_classes), H, W] ->[batch_size, H, W]
-        skin_prob = output[:, skin_classes].sum(dim=1)
+        skin_prob = output[:, skin_classes].sum(dim=1) # merge skin classes
         skin_pre = (skin_prob > 0.5).float()  # [batch_size, H, W]
+        total_skin = ((gth == 1)|(gth == 2) * mask).sum().float()
         gth_skin = ((gth == 1) | (gth == 2)).float()
         correct_skin_pixels = ((skin_pre == gth_skin) * mask).sum().float()
-        acc_skin = correct_skin_pixels / total_pixels
+        acc_skin = correct_skin_pixels / total_skin
 
     elif classes == 2:
         output = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
         correct = ((output == gth) * mask).sum().float()
         acc = correct / total_pixels
-        total_skin = (gth == 1).sum().float()
+        total_skin = ((gth == 1) * mask).sum().float()
         correct_skin_pixels = ((output == gth) * (gth == 1) * mask).sum().float()
         acc_skin = correct_skin_pixels / total_skin
     else:
