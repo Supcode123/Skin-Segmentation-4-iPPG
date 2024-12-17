@@ -92,8 +92,8 @@ def main():
             batch_loss.backward()
             optimizer.step()
             with torch.no_grad():
-                train_acc, _ = accuracy(train_pred, label, train_dataset.num_classes, device)
-                train_acc += train_acc.item()
+                train_accuracy, _ = accuracy(train_pred, label, train_dataset.num_classes, device)
+                train_acc += train_accuracy.item()
             train_loss += batch_loss.item()
 
         # learn rate scheduler
@@ -114,13 +114,15 @@ def main():
                 val_skin_acc += val_skin_accuracy.item()
                 val_loss += batch_loss.item()
                 miou_score, skin_miou = miou_cal(val_pred, label, val_dataset.num_classes, device)
-                val_miou += miou_score.mean().item()
+                val_miou += miou_score.item()
                 val_skin_miou += skin_miou.item()
 
-            message = '[%03d/%03d] %2.2f sec(s) lr: %f Train Acc: %3.6f Loss: %3.6f | Val loss: %3.6f M-IoU: %3.6f' % \
+            message = '[%03d/%03d] %2.2f sec(s) lr: %f Train Acc: %3.6f Loss: %3.6f |' \
+                      ' Val Acc: %3.6f Loss: %3.6f M-IoU: %3.6f' % \
                       (epoch + 1, num_epochs, time.time() - epoch_start_time, optimizer.param_groups[0]['lr'],
                        train_acc / len(train_dataloader),
                        train_loss / len(train_dataloader),
+                       val_acc / len(val_dataloader),
                        val_loss / len(val_dataloader),
                        val_miou / len(val_dataloader))
             print(message)
@@ -165,7 +167,7 @@ def main():
                 plt.savefig(os.path.join(output_dir, f'example_plot.png'))
                 plt.close()
                 # save final acc, m_iou data to compare
-                csv_file(args.log_path, val_skin_acc / len(val_dataloader), val_miou / len(val_dataloader),
+                csv_file(args.log_path, val_skin_acc / len(val_dataloader),
                          val_skin_miou / len(val_dataloader), val_dataset.num_classes)
 
 

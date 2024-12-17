@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torchmetrics.classification import MulticlassJaccardIndex
+from torchmetrics.classification import MulticlassJaccardIndex, BinaryJaccardIndex
 
 
 def accuracy(pred: torch.Tensor, gth: torch.Tensor, classes: int, device):
@@ -18,9 +18,10 @@ def accuracy(pred: torch.Tensor, gth: torch.Tensor, classes: int, device):
         # [batch_size,len(skin_classes), H, W] ->[batch_size, H, W]
         skin_prob = output[:, skin_classes].sum(dim=1) # merge skin classes
         skin_pre = (skin_prob > 0.5).float()  # [batch_size, H, W]
-        total_skin = ((gth == 1)|(gth == 2) * mask).sum().float()
         gth_skin = ((gth == 1) | (gth == 2)).float()
-        correct_skin_pixels = ((skin_pre == gth_skin) * mask).sum().float()
+        total_skin = (gth_skin * mask).sum().float()
+        correct_pred_skin = ((skin_pre == 1) & (gth_skin == 1)).float()
+        correct_skin_pixels = (correct_pred_skin * mask).sum().float()
         acc_skin = correct_skin_pixels / total_skin
 
     elif classes == 2:
@@ -56,16 +57,23 @@ def loss_cal(pred: torch.Tensor, gth: torch.Tensor, classes: int, ignore: int):
 
 def miou_cal(pred: torch.Tensor, gth: torch.Tensor, classes: int, device):
 
+    miou = torch.tensor(0.0, dtype=torch.float32).to(device)
     skin_miou = torch.tensor(0.0, dtype=torch.float32).to(device)
-    class_miou = MulticlassJaccardIndex(num_classes=classes, ignore_index=255, average='none').to(device)
+
     if classes == 18:
+       class_miou = MulticlassJaccardIndex(num_classes=classes, ignore_index=255, average='none').to(device)
        miou = class_miou(pred, gth)
        skin_miou = (miou[1]+miou[2])/2
+       miou = miou.mean()
+
     if classes == 2:
-       predictions = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
-       miou = class_miou(predictions, gth)
-       skin_miou = miou[1]
+       binary_miou = BinaryJaccardIndex(ignore_index=255).to(device)
+       predictions = (torch.sigmoid(pred) > 0.5).float()
+       miou = binary_miou(predictions, gth)
+       skin_miou = miou
 
     return miou, skin_miou
+
+
 
 
