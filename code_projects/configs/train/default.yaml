@@ -1,8 +1,6 @@
 BATCH_SIZE: 20
 WORKERS: 8
 
-MODE: train # train_di
-
 OPTIMIZER: AdamW
 STEPSIZE: 1
 BASE_LR: 0.0002 # 0.00002

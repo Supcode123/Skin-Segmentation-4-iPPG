@@ -7,6 +7,7 @@ import torch
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+
 def plot_images(img, remapped_mask, remapped_colormap, classes_exp):
     """
     Generates plot of Image and RGB mask with class colorbar
@@ -209,7 +210,8 @@ def mask_to_colormap(mask, colormap):
         rgb[mask == label] = color
     return rgb
 
-def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp):
+
+def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp, probability_map=None):
     """
     Generates plot of Image and RGB mask with class colorbar
     :param fig: matplotlib.figure.Figure object
@@ -218,6 +220,7 @@ def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp)
     :param mask_rgb: 3D ndarray Generated RGB mask
     :param colormap: dictionary that indicates color corresponding to each class
     :param classes_exp: corresponding class numbers
+    :param probability_map: 2D ndarray of class probabilities
     :return: plot of image and rgb mask with class colorbar
     """
     N = position[0]
@@ -240,6 +243,7 @@ def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp)
     cmp = np.asarray(c_map) / 255
     cmap_mask = LinearSegmentedColormap.from_list("seg_mask_colormap", cmp, N=len(cmp))
     im = ax.imshow(mask_rgb, cmap=cmap_mask)
+
     intervals = np.linspace(0, 255, num=len(cmp) + 1)
     ticks = intervals[:-1] + int(intervals[1] - intervals[0]) / 2
     divider = make_axes_locatable(ax)
@@ -247,7 +251,26 @@ def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp)
     cbarl = fig.colorbar(mappable=im, cax=caxl, ticks=ticks, orientation="vertical")
     cbarl.ax.set_yticklabels(cl)
 
-def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor, img_batch: torch.Tensor, cls: int):
+    # Optionally add probability heatmap overlay
+    if probability_map is not None:
+        # Ensure values are within [0, 1]
+        prob_norm = np.clip(probability_map.cpu().numpy(), 0, 1)
+        colors = [(0.0, (58/255, 0/255, 82/255)),
+                  (1.0, (253/255, 234/255, 39/255))]  # define the start and end colors of the gradient
+        n_bins = 100  # set the subdivision level of the gradient
+        cmap_name = "green_red"
+        custom_cmap = LinearSegmentedColormap.from_list(cmap_name, colors, N=n_bins)
+        cax = ax.imshow(prob_norm, cmap=custom_cmap, alpha=0.5)  # Overlay with alpha transparency
+        ax_color = divider.append_axes("left", size="5%", pad=0.05)
+        colorbar = fig.colorbar(cax, cax=ax_color, orientation="vertical")
+        colorbar.ax.yaxis.set_ticks_position('left')
+
+
+
+
+
+def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
+               img_batch: torch.Tensor, cls: int, prob=None):
     """
     Given a batch of predicted masks, gt masks and input images,
     return a matplotlib figure.
@@ -256,6 +279,7 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor, img_b
         pred_mask_batch(tensor): batch of predicted masks, (B, H, W)
         gt_mask_batch(tensor): batch of gt masks, (B, H, W)
         img_batch(tensor): batch of input images, (B, C, H, W)
+        prob: batch of 2D ndarray of class probabilities
 
     Returns:
         fig: plot object
@@ -300,12 +324,22 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor, img_b
             gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)
             img = img_batch[n, ...].permute(1, 2, 0).cpu().numpy()
             # image
-            ax = fig.add_subplot(N, 3, n * 3 + 1, xticks=[], yticks=[])
-            ax.imshow(img)
-            # ground truth mask
-            subplot(fig, [N, 3, n * 3 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
-            # remapped the predicted mask with 2 classes
-            subplot(fig, [N, 3, n * 3 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
+            if prob is None:
+                ax = fig.add_subplot(N, 3, n * 3 + 1, xticks=[], yticks=[])
+                ax.imshow(img)
+                # ground truth mask
+                subplot(fig, [N, 3, n * 3 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
+                # remapped the predicted mask with 2 classes
+                subplot(fig, [N, 3, n * 3 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
+            else:
+                # image
+                ax = fig.add_subplot(N, 4, n * 4 + 1, xticks=[], yticks=[])
+                ax.imshow(img)
+                # ground truth mask
+                subplot(fig, [N, 4, n * 4 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
+                # remapped the predicted mask with 2 classes
+                subplot(fig, [N, 4, n * 4 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
+                subplot(fig, [N, 4, n * 4 + 4], remapped_pred_mask, pred_mask_rgb, colormap, classes, prob[n, ...])
         else:
             raise ValueError
 

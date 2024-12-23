@@ -68,7 +68,7 @@ def miou_cal(pred: torch.Tensor, gth: torch.Tensor, classes: int, device):
 
     if classes == 2:
        binary_miou = BinaryJaccardIndex(ignore_index=255).to(device)
-       predictions = (torch.sigmoid(pred) > 0.5).float()
+       predictions = (torch.sigmoid(pred) > 0.5).float().squeeze(1)
        miou = binary_miou(predictions, gth)
        skin_miou = miou
 
