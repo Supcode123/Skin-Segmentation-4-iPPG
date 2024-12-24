@@ -96,7 +96,7 @@ class Dataset(data.Dataset):
         assert len(img_file_list) == len(label_file_list)
 
         for i in range(len(img_file_list)):
-            img_name = img_file_list[i].split('/')[-1]
+            img_name = os.path.basename(img_file_list[i])
             tmp_dict = {"img": img_file_list[i],
                         "mask": label_file_list[i],
                         "name": img_name}

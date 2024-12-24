@@ -258,7 +258,7 @@ def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp,
         colors = [(0.0, (58/255, 0/255, 82/255)),
                   (1.0, (253/255, 234/255, 39/255))]  # define the start and end colors of the gradient
         n_bins = 100  # set the subdivision level of the gradient
-        cmap_name = "green_red"
+        cmap_name = "purple_yellow"
         custom_cmap = LinearSegmentedColormap.from_list(cmap_name, colors, N=n_bins)
         cax = ax.imshow(prob_norm, cmap=custom_cmap, alpha=0.5)  # Overlay with alpha transparency
         ax_color = divider.append_axes("left", size="5%", pad=0.05)
@@ -266,11 +266,8 @@ def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp,
         colorbar.ax.yaxis.set_ticks_position('left')
 
 
-
-
-
 def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
-               img_batch: torch.Tensor, cls: int, prob=None):
+               img_batch: torch.Tensor, cls: int):
     """
     Given a batch of predicted masks, gt masks and input images,
     return a matplotlib figure.
@@ -324,27 +321,60 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
             gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)
             img = img_batch[n, ...].permute(1, 2, 0).cpu().numpy()
             # image
-            if prob is None:
-                ax = fig.add_subplot(N, 3, n * 3 + 1, xticks=[], yticks=[])
-                ax.imshow(img)
-                # ground truth mask
-                subplot(fig, [N, 3, n * 3 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
-                # remapped the predicted mask with 2 classes
-                subplot(fig, [N, 3, n * 3 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
-            else:
-                # image
-                ax = fig.add_subplot(N, 4, n * 4 + 1, xticks=[], yticks=[])
-                ax.imshow(img)
-                # ground truth mask
-                subplot(fig, [N, 4, n * 4 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
-                # remapped the predicted mask with 2 classes
-                subplot(fig, [N, 4, n * 4 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
-                subplot(fig, [N, 4, n * 4 + 4], remapped_pred_mask, pred_mask_rgb, colormap, classes, prob[n, ...])
+            ax = fig.add_subplot(N, 4, n * 4 + 1, xticks=[], yticks=[])
+            ax.imshow(img)
+            # ground truth mask
+            subplot(fig, [N, 4, n * 4 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
+            # remapped the predicted mask with 2 classes
+            subplot(fig, [N, 4, n * 4 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
+            # subplot(fig, [N, 4, n * 4 + 4], remapped_pred_mask, pred_mask_rgb, colormap, classes, prob[n, ...])
         else:
             raise ValueError
 
         ax.axis("off")
         fig.tight_layout()
+    return fig
+
+
+def create_fig_test(samples: list):
+    """
+    Given a tuple included predicted masks, gt masks and input images,
+    return a matplotlib figure.
+
+    Returns:
+        fig: plot object
+    """
+
+    fig = plt.figure(figsize=(4 * 5, 4 * 2.7), dpi=100)
+    for n in range(4):
+        remapped_pred_mask, classes, colormap = remap_simple(samples[n][2].cpu().numpy())
+        remapped_gt_mask, _, _ = remap_simple(samples[n][3].cpu().numpy())
+        pred_mask_rgb = mask_to_colormap(remapped_pred_mask, colormap=colormap)
+        gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)
+        sample = denormalize(samples[n][4], [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        img = sample.permute(1, 2, 0).cpu().numpy()
+        # image
+
+        ax = fig.add_subplot(4, 4, n * 4 + 1, xticks=[], yticks=[])
+        ax.imshow(img)
+        ax.axis("off")
+        fig.text(
+            0.19,
+            max(0.01, 0.78 - n * 0.265),
+            f"example {samples[n][0]}, iou: {samples[n][1]}",
+            fontsize=12,
+            ha="center",
+            va="center",
+        )
+        # ground truth mask
+        subplot(fig, [4, 4, n * 4 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
+        # predicted mask with 2 classes
+        subplot(fig, [4, 4, n * 4 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
+        # predicted mask with 2 classes and probability heatmap
+        subplot(fig, [4, 4, n * 4 + 4], remapped_pred_mask, pred_mask_rgb, colormap, classes, samples[n][5])
+
+    fig.tight_layout()
+    plt.subplots_adjust(hspace=0.3, bottom=0.05)  # Adjust the vertical space between rows
     return fig
 
 
