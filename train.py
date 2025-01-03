@@ -12,7 +12,7 @@ from code_projects.unitls.before_train import parse_train_args, get_train_info, 
     create_optimizer, create_scheduler
 from code_projects.unitls.visualization_plot import create_fig, denormalize
 from code_projects.unitls.early_stopping import EarlyStopping
-from code_projects.unitls.score_cal import accuracy, loss_cal, miou_cal
+from code_projects.unitls.score_cal import accuracy, loss_cal, miou_cal, Dice_cal
 from code_projects.unitls.csv_create import csv_file
 
 
@@ -79,6 +79,7 @@ def main():
         val_skin_miou = 0.
         val_loss = 0.
         val_skin_acc = 0.
+        val_dice = 0.
 
         model.train()
         pbar = tqdm(train_dataloader)
@@ -114,17 +115,21 @@ def main():
                 val_skin_acc += val_skin_accuracy.item()
                 val_loss += batch_loss.item()
                 miou_score, skin_miou = miou_cal(val_pred, label, val_dataset.num_classes, device)
+                if val_dataset.num_classes == 2:
+                    dice = Dice_cal(val_pred, label, device)
+                    val_dice += dice.item()
                 val_miou += miou_score.item()
                 val_skin_miou += skin_miou.item()
 
             message = '[%03d/%03d] %2.2f sec(s) lr: %f Train Acc: %3.6f Loss: %3.6f |' \
-                      ' Val Acc: %3.6f Loss: %3.6f M-IoU: %3.6f' % \
+                      ' Val Acc: %3.6f Loss: %3.6f M-IoU: %3.6f Dice: %3.6f'% \
                       (epoch + 1, num_epochs, time.time() - epoch_start_time, optimizer.param_groups[0]['lr'],
                        train_acc / len(train_dataloader),
                        train_loss / len(train_dataloader),
                        val_acc / len(val_dataloader),
                        val_loss / len(val_dataloader),
-                       val_miou / len(val_dataloader))
+                       val_miou / len(val_dataloader),
+                       val_dice / len(val_dataloader))
             print(message)
             logger.info(message)
 
@@ -143,6 +148,7 @@ def main():
                 tb_writer.add_scalar('val/loss', val_loss / len(val_dataloader), epoch + 1)
                 tb_writer.add_scalar('val/accuracy', val_acc / len(train_dataloader), epoch + 1)
                 tb_writer.add_scalar('val/mIoU', val_miou / len(val_dataloader), epoch + 1)
+                tb_writer.add_scalar('val/Dice', val_dice / len(val_dataloader), epoch + 1)
 
                 # save the best models
                 print("save models: Processing...")

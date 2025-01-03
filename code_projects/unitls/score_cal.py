@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from torchmetrics.classification import MulticlassJaccardIndex, BinaryJaccardIndex
+from torchmetrics.classification import MulticlassJaccardIndex, BinaryJaccardIndex, \
+                                        Dice
 
 
 def accuracy(pred: torch.Tensor, gth: torch.Tensor, classes: int, device):
@@ -75,5 +76,11 @@ def miou_cal(pred: torch.Tensor, gth: torch.Tensor, classes: int, device):
     return miou, skin_miou
 
 
-
-
+def Dice_cal(pred: torch.Tensor, gth: torch.Tensor, device):
+    dice_metric = Dice(num_classes=2, multiclass=True).to(device)
+    valid_mask = (gth != 255)
+    predictions = (torch.sigmoid(pred) > 0.5).float().squeeze(1)
+    predictions = predictions[valid_mask]
+    gth = gth[valid_mask].int()
+    dice = dice_metric(predictions, gth)
+    return dice
