@@ -6,7 +6,7 @@ import torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from code_projects.data.dataLoader import data_load
-from models.smp_model import model_create
+from models.Archi import model_create
 from code_projects.unitls.before_train import parse_eval_args
 from code_projects.unitls.visualization_plot import create_fig, denormalize, create_fig_test
 from code_projects.unitls.score_cal import miou_cal

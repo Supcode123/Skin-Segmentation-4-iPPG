@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 from code_projects.data.dataLoader import data_load
 from code_projects.data.experiments import remap_label
-from models.smp_model import model_create
+from models.Archi import model_select
 from code_projects.unitls.before_train import parse_train_args, get_train_info, \
     create_optimizer, create_scheduler
 from code_projects.unitls.visualization_plot import create_fig, denormalize
@@ -36,7 +36,7 @@ def main():
 
     print("##### Load models ...###")
 
-    model = model_create(model_config, data_config).to(device)
+    model = model_select(model_config, data_config).to(device)
 
     optimizer = create_optimizer(model, train_config)
 
