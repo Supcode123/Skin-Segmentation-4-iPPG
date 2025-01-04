@@ -93,7 +93,7 @@ def main():
             batch_loss.backward()
             optimizer.step()
             with torch.no_grad():
-                train_accuracy, _ = accuracy(train_pred, label, train_dataset.num_classes, device)
+                train_accuracy, _ = accuracy(train_pred, label, train_dataset.num_classes, 255, device)
                 train_acc += train_accuracy.item()
             train_loss += batch_loss.item()
 
@@ -110,19 +110,19 @@ def main():
                 sample, label = sample.to(device), label.to(device)
                 val_pred = model(sample)
                 batch_loss = loss_cal(val_pred, label, val_dataset.num_classes, train_config["IGNORE_LABEL"])
-                val_accuracy, val_skin_accuracy = accuracy(val_pred, label, val_dataset.num_classes, device)
+                val_accuracy, val_skin_accuracy = accuracy(val_pred, label, val_dataset.num_classes, 255, device)
                 val_acc += val_accuracy.item()
                 val_skin_acc += val_skin_accuracy.item()
                 val_loss += batch_loss.item()
-                miou_score, skin_miou = miou_cal(val_pred, label, val_dataset.num_classes, device)
+                miou_score, skin_miou = miou_cal(val_pred, label, val_dataset.num_classes, 255, device)
                 if val_dataset.num_classes == 2:
-                    dice = Dice_cal(val_pred, label, device)
+                    dice = Dice_cal(val_pred, label, 255, device)
                     val_dice += dice.item()
                 val_miou += miou_score.item()
                 val_skin_miou += skin_miou.item()
 
             message = '[%03d/%03d] %2.2f sec(s) lr: %f Train Acc: %3.6f Loss: %3.6f |' \
-                      ' Val Acc: %3.6f Loss: %3.6f M-IoU: %3.6f Dice: %3.6f'% \
+                      ' Val Acc: %3.6f Loss: %3.6f M-IoU: %3.6f Dice(skin): %3.6f'% \
                       (epoch + 1, num_epochs, time.time() - epoch_start_time, optimizer.param_groups[0]['lr'],
                        train_acc / len(train_dataloader),
                        train_loss / len(train_dataloader),
