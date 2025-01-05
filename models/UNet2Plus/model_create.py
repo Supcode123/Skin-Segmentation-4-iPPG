@@ -5,6 +5,7 @@ reference to https://github.com/qubvel-org/segmentation_models.pytorch/tree/main
 
 
 def unet2plus(model_cfg):
+
     backbone = model_cfg['BACKBONE']
     head = model_cfg['HEAD']
     model = getattr(smp, head)(
