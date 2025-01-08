@@ -52,10 +52,10 @@ def main():
     scheduler = create_scheduler(optimizer, train_config)
 
     # Log graph of models
-    im = torch.zeros((1, 3, 256, 256), device=device)
-    model.eval()
-    tb_writer.add_graph(model, im)
-    model.train()
+    # im = torch.zeros((1, 3, 256, 256), device=device)
+    # model.eval()
+    # tb_writer.add_graph(model, im)
+    # model.train()
 
     if warmstart:
         model.load_state_dict(torch.load(os.path.join(warmstart_dir, 'model_checkpoint.pt'), map_location=device))
@@ -168,13 +168,13 @@ def main():
                 # max_ind = val_pred.shape[0]
                 create_fig(val_pred[:max_ind, ...],
                            label[:max_ind, ...],
-                           denormalize(sample[:max_ind, ...], [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                           denormalize(sample[:max_ind, ...], data_config['MEAN'], data_config['STD']),
                            data_config["CLASSES"])
                 plt.savefig(os.path.join(output_dir, f'example_plot.png'))
                 plt.close()
                 # save final acc, m_iou data to compare
-                csv_file(args.log_path, val_skin_acc / len(val_dataloader),
-                         val_skin_miou / len(val_dataloader), val_dataset.num_classes)
+                # csv_file(args.log_path, val_skin_acc / len(val_dataloader),
+                #          val_skin_miou / len(val_dataloader), val_dataset.num_classes)
 
 
 if __name__ == '__main__':

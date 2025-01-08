@@ -7,7 +7,7 @@ def data_load(root: str, train_info: dict, data_info: dict):
     train_dataset = Dataset(root=root,
                             classes=data_info['CLASSES'],
                             transform=A.Compose([
-                                #
+                                A.RandomCrop(width=224, height=224), # for SwinTransformer Windowsize
                                 A.HorizontalFlip(p=0.5),
                                 A.VerticalFlip(p=0.5),
                                 # Randomly shift,zoom,rotate
@@ -50,7 +50,7 @@ def data_load(root: str, train_info: dict, data_info: dict):
     val_dataset = Dataset(root=root,
                           classes=data_info['CLASSES'],
                           transform=None,
-                          img_normalization=A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                          img_normalization=A.Normalize(mean=data_info['MEAN'], std=data_info['STD']),
                           mode='val',
                           filter_mislabeled=data_info['FILTER_MISLABELED'])
 
