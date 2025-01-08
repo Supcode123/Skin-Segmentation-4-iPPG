@@ -15,3 +15,4 @@ SWIN:
 USE_CHECKPOINT: false
 DROP_RATE: 0.
 DROP_PATH_RATE: 0.2
+PRETRAIN_CKPT: "./models/Swin_Unet/swin_tiny_patch4_window7_224.pth"
