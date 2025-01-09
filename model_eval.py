@@ -1,15 +1,16 @@
 import os
 import shutil
+import random
 
 import yaml
 import torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from code_projects.data.dataLoader import data_load
-from models.Archi import model_create
+from models.Archi import model_select
 from code_projects.unitls.before_train import parse_eval_args
-from code_projects.unitls.visualization_plot import create_fig, denormalize, create_fig_test
-from code_projects.unitls.score_cal import miou_cal
+from code_projects.unitls.visualization_plot import  create_fig_test
+
 
 
 def main():
@@ -41,32 +42,31 @@ def main():
 
     print("##### Load model etc.")
 
-    model = model_create(model_info,data_info).to(args.device)
+    model = model_select(model_info,data_info).to(args.device)
     model.load_state_dict(torch.load(os.path.join(args.chkpt_path, "model_checkpoint.pt"), map_location=args.device))
     model.eval()
 
     # mIoU = JaccardIndex(task='multiclass', num_classes=test_dataset.num_classes, average=None).to(args.device)
-    ious = []
+    results = []
     with torch.no_grad():
         pbar = tqdm(test_dataloader)
         for i, (sample, label, name) in enumerate(pbar):
             sample, label = sample.to(args.device), label.to(args.device)
             pred = model(sample)
-            iou_score, _ = miou_cal(pred, label, test_dataset.num_classes, args.device)
-            iou = iou_score.item()
+            # iou_score, _ = miou_cal(pred, label, test_dataset.num_classes, args.device)
+            # iou = iou_score.item()
             prob = torch.sigmoid(pred).squeeze(1)
             pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
-            ious.append((name, iou, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
+            results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
 
-    sorted_ious = sorted(ious, key=lambda x: x[0], reverse=True)
-    high_iou_samples = sorted_ious[:4]
-    low_iou_samples = sorted_ious[-4:]
-    fig_high = create_fig_test(high_iou_samples)
-    plt.savefig(os.path.join(args.chkpt_path, "eval", f"prediction_high_iou.png"))
-    plt.close(fig_high)
-    fig_low = create_fig_test(low_iou_samples)
-    plt.savefig(os.path.join(args.chkpt_path, "eval", f"prediction_low_iou.png"))
-    plt.close(fig_low)
+    # sorted_ious = sorted(ious, key=lambda x: x[0], reverse=True)
+    random.seed(42)
+    samples = random.sample(results, 8)
+
+    save_path = os.path.join(args.chkpt_path, "eval")
+    os.makedirs(save_path, exist_ok=True)
+    create_fig_test(samples, save_path)
+
     # fig = create_fig(pred[:4, ...],
     #                  label[:4, ...],
     #                  denormalize(sample[:4, ...], [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),

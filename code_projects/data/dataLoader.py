@@ -52,7 +52,7 @@ def data_load(root: str, train_info: dict, data_info: dict):
     val_dataset = Dataset(root=root,
                           classes=data_info['CLASSES'],
                           # transform= None,
-                          transform=A.CenterCrop(width=224, height=224), # for Swin_Unet, synthetic dataset
+                          # transform=A.CenterCrop(width=224, height=224), # for Swin_Unet, synthetic dataset
                           img_normalization=A.Normalize(mean=data_info['MEAN'], std=data_info['STD']),
                           mode='val',
                           filter_mislabeled=data_info['FILTER_MISLABELED'])

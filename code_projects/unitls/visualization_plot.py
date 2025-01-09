@@ -211,7 +211,7 @@ def mask_to_colormap(mask, colormap):
     return rgb
 
 
-def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp, probability_map=None):
+def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp):
     """
     Generates plot of Image and RGB mask with class colorbar
     :param fig: matplotlib.figure.Figure object
@@ -220,7 +220,6 @@ def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp,
     :param mask_rgb: 3D ndarray Generated RGB mask
     :param colormap: dictionary that indicates color corresponding to each class
     :param classes_exp: corresponding class numbers
-    :param probability_map: 2D ndarray of class probabilities
     :return: plot of image and rgb mask with class colorbar
     """
     N = position[0]
@@ -251,6 +250,41 @@ def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp,
     cbarl = fig.colorbar(mappable=im, cax=caxl, ticks=ticks, orientation="vertical")
     cbarl.ax.set_yticklabels(cl)
 
+
+def plot(path, remapped_mask, mask_rgb, colormap, classes_exp, name: str, probability_map=None):
+    """
+    Generates plot of Image and RGB mask with class colorbar
+    :param path: save path
+    :param remapped_mask: 2D/3D ndarray of input segmentation mask with class ids
+    :param mask_rgb: 3D ndarray Generated RGB mask
+    :param colormap: dictionary that indicates color corresponding to each class
+    :param classes_exp: corresponding class numbers
+    :param name: str name of img
+    :param probability_map: 2D ndarray of class probabilities
+    :return: plot of image and rgb mask with class colorbar
+    """
+    img_u_labels = np.unique(remapped_mask)  # 获取唯一标签
+    c_map = []
+    cl = []
+    for i_label in img_u_labels:
+        if i_label == 255:  # Skip ignore_label (255)
+            continue
+        for i_key, i_color in colormap.items():
+            if i_label == i_key:
+                c_map.append(i_color)
+        for i_key, i_class in classes_exp.items():
+            if i_label == i_key:
+                cl.append(i_class)
+    cl = np.asarray(cl)
+    cmp = np.asarray(c_map) / 255
+    cmap_mask = LinearSegmentedColormap.from_list("seg_mask_colormap", cmp, N=len(cmp))
+
+    plt.figure(figsize=(5, 5), dpi=100)
+    plt.xticks([])
+    plt.yticks([])
+    im = plt.imshow(mask_rgb)
+    im.set_cmap(cmap_mask)
+
     # Optionally add probability heatmap overlay
     if probability_map is not None:
         # Ensure values are within [0, 1]
@@ -260,10 +294,15 @@ def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp,
         n_bins = 100  # set the subdivision level of the gradient
         cmap_name = "purple_yellow"
         custom_cmap = LinearSegmentedColormap.from_list(cmap_name, colors, N=n_bins)
-        cax = ax.imshow(prob_norm, cmap=custom_cmap, alpha=0.5)  # Overlay with alpha transparency
-        ax_color = divider.append_axes("left", size="5%", pad=0.05)
-        colorbar = fig.colorbar(cax, cax=ax_color, orientation="vertical")
-        colorbar.ax.yaxis.set_ticks_position('left')
+        plt.imshow(prob_norm, cmap=custom_cmap, alpha=0.5)  # Overlay with alpha transparency
+        # ax_color = divider.append_axes("left", size="5%", pad=0.05)
+        # colorbar = plt.colorbar(cax, cax=ax_color, orientation="vertical")
+        # colorbar.ax.yaxis.set_ticks_position('left')
+
+    plt.axis('off')
+    save_path = os.path.join(path, name)
+    plt.savefig(save_path)
+
 
 
 def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
@@ -336,46 +375,27 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
     return fig
 
 
-def create_fig_test(samples: list):
-    """
-    Given a tuple included predicted masks, gt masks and input images,
-    return a matplotlib figure.
+def create_fig_test(samples: list, save_path: str):
 
-    Returns:
-        fig: plot object
-    """
-
-    fig = plt.figure(figsize=(4 * 5, 4 * 2.7), dpi=100)
     for n in range(4):
-        remapped_pred_mask, classes, colormap = remap_simple(samples[n][2].cpu().numpy())
-        remapped_gt_mask, _, _ = remap_simple(samples[n][3].cpu().numpy())
+        remapped_pred_mask, classes, colormap = remap_simple(samples[n][1].cpu().numpy())
+        remapped_gt_mask, _, _ = remap_simple(samples[n][2].cpu().numpy())
         pred_mask_rgb = mask_to_colormap(remapped_pred_mask, colormap=colormap)
         gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)
-        sample = denormalize(samples[n][4], [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        sample = denormalize(samples[n][3], [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         img = sample.permute(1, 2, 0).cpu().numpy()
         # image
+        img_name = samples[n][0][0].split('.')[0]
+        dir_path = os.path.join(save_path, img_name)
+        os.makedirs(dir_path)
+        plt.imsave(os.path.join(dir_path, 'img.png'), img)
 
-        ax = fig.add_subplot(4, 4, n * 4 + 1, xticks=[], yticks=[])
-        ax.imshow(img)
-        ax.axis("off")
-        fig.text(
-            0.19,
-            max(0.01, 0.78 - n * 0.265),
-            f"example {samples[n][0]}, iou: {samples[n][1]}",
-            fontsize=12,
-            ha="center",
-            va="center",
-        )
         # ground truth mask
-        subplot(fig, [4, 4, n * 4 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
+        plot(dir_path, remapped_gt_mask, gt_mask_rgb, colormap, classes, 'gt.png')
         # predicted mask with 2 classes
-        subplot(fig, [4, 4, n * 4 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
+        plot(dir_path, remapped_pred_mask, pred_mask_rgb, colormap, classes, 'pred.png')
         # predicted mask with 2 classes and probability heatmap
-        subplot(fig, [4, 4, n * 4 + 4], remapped_pred_mask, pred_mask_rgb, colormap, classes, samples[n][5])
-
-    fig.tight_layout()
-    plt.subplots_adjust(hspace=0.3, bottom=0.05)  # Adjust the vertical space between rows
-    return fig
+        plot(dir_path, remapped_pred_mask, pred_mask_rgb, colormap, classes, 'hotmap.png', samples[n][4])
 
 
 def denormalize(img_tensor: torch.Tensor, mean: list , std: list) -> torch.Tensor:
