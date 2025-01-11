@@ -11,4 +11,6 @@ def model_select(model_cfg: dict, data_cfg: dict):
         return unet2plus(model_cfg)
 
     elif model_cfg['NAME'] == "Swin_Unet":
-        return SwinUnet(model_cfg, num_classes=1)
+        net = SwinUnet(model_cfg, num_classes=1)
+        net.load_from(model_cfg)
+        return net

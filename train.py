@@ -155,7 +155,7 @@ def main():
                 torch.save(model.state_dict(), os.path.join(output_dir, 'model_checkpoint.pt'))
                 torch.save(optimizer.state_dict(), os.path.join(output_dir, 'optim_checkpoint.pt'))
                 torch.save(scheduler.state_dict(), os.path.join(output_dir, 'scheduler_checkpoint.pt'))
-                print("save models: done!")
+                print(f"save models at {epoch+1} epoch: done!")
 
                 # Make example plot
                 if val_dataset.num_classes == 18:
