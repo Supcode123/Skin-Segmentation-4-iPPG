@@ -8,7 +8,7 @@ def data_load(root: str, train_info: dict, data_info: dict):
                             classes=data_info['CLASSES'],
                             transform=A.Compose([
                                 # for SwinTransformer Windowsize, synthetic dataset
-                                A.RandomCrop(width=224, height=224),
+                                # A.RandomCrop(width=224, height=224),
 
                                 A.HorizontalFlip(p=0.5),
                                 A.VerticalFlip(p=0.5),

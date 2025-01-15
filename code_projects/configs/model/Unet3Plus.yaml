@@ -1,0 +1,7 @@
+NAME: EfficientNetb0_UNet3Plus
+
+BACKBONE: efficientnet-b0
+N_CLASSES: 1
+IN_CHANNELS: 3
+ENCODER_WEIGHTS: imagenet
+FILTERS: [32, 24, 40, 112, 320]
