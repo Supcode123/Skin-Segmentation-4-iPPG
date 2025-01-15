@@ -38,7 +38,7 @@ def data_load(root: str, train_info: dict, data_info: dict):
                                     var_limit=(10.0, 50.0),
                                     p=0.3),
                             ]),
-                            img_normalization=A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                            img_normalization=A.Normalize(mean=data_info['MEAN'], std=data_info['STD']),
                             mode= 'train',
                             filter_mislabeled=data_info['FILTER_MISLABELED'])
 

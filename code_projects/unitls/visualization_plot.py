@@ -229,27 +229,35 @@ def subplot(fig, position: list, remapped_mask, mask_rgb, colormap, classes_exp)
     img_u_labels = np.unique(remapped_mask)  # 获取唯一标签
     c_map = []
     cl = []
-    for i_label in img_u_labels:
-        if i_label == 255:  # Skip ignore_label (255)
-            continue
-        for i_key, i_color in colormap.items():
-            if i_label == i_key:
-                c_map.append(i_color)
-        for i_key, i_class in classes_exp.items():
-            if i_label == i_key:
-                cl.append(i_class)
+    if len(img_u_labels) == 1:
+        label = img_u_labels[0]
+        c_map = [colormap[label]]
+        cl = [classes_exp[label]]
+    else:
+        for i_label in img_u_labels:
+            if i_label == 255:  # Skip ignore_label (255)
+                continue
+            for i_key, i_color in colormap.items():
+                if i_label == i_key:
+                    c_map.append(i_color)
+            for i_key, i_class in classes_exp.items():
+                if i_label == i_key:
+                    cl.append(i_class)
+
     cl = np.asarray(cl)
     cmp = np.asarray(c_map) / 255
     cmap_mask = LinearSegmentedColormap.from_list("seg_mask_colormap", cmp, N=len(cmp))
     im = ax.imshow(mask_rgb, cmap=cmap_mask)
 
-    intervals = np.linspace(0, 255, num=len(cmp) + 1)
-    ticks = intervals[:-1] + int(intervals[1] - intervals[0]) / 2
-    divider = make_axes_locatable(ax)
-    caxl = divider.append_axes("right", size="5%", pad=0.05)
-    cbarl = fig.colorbar(mappable=im, cax=caxl, ticks=ticks, orientation="vertical")
-    cbarl.ax.set_yticklabels(cl)
+    if len(c_map) > 1:
+        intervals = np.linspace(0, 255, num=len(cmp) + 1)
+        ticks = intervals[:-1] + int(intervals[1] - intervals[0]) / 2
+        divider = make_axes_locatable(ax)
+        caxl = divider.append_axes("right", size="5%", pad=0.05)
+        cbarl = fig.colorbar(mappable=im, cax=caxl, ticks=ticks, orientation="vertical")
+        cbarl.ax.set_yticklabels(cl)
 
+    ax.axis("off")
 
 def plot(path, remapped_mask, mask_rgb, colormap, classes_exp, name: str, probability_map=None):
     """
@@ -275,7 +283,7 @@ def plot(path, remapped_mask, mask_rgb, colormap, classes_exp, name: str, probab
         for i_key, i_class in classes_exp.items():
             if i_label == i_key:
                 cl.append(i_class)
-    cl = np.asarray(cl)
+    # cl = np.asarray(cl)
     cmp = np.asarray(c_map) / 255
     cmap_mask = LinearSegmentedColormap.from_list("seg_mask_colormap", cmp, N=len(cmp))
 
@@ -302,7 +310,6 @@ def plot(path, remapped_mask, mask_rgb, colormap, classes_exp, name: str, probab
     plt.axis('off')
     save_path = os.path.join(path, name)
     plt.savefig(save_path)
-
 
 
 def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
@@ -360,12 +367,12 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
             gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)
             img = img_batch[n, ...].permute(1, 2, 0).cpu().numpy()
             # image
-            ax = fig.add_subplot(N, 4, n * 4 + 1, xticks=[], yticks=[])
+            ax = fig.add_subplot(N, 3, n * 3 + 1, xticks=[], yticks=[])
             ax.imshow(img)
             # ground truth mask
-            subplot(fig, [N, 4, n * 4 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
+            subplot(fig, [N, 3, n * 3 + 2], remapped_gt_mask, gt_mask_rgb, colormap, classes)
             # remapped the predicted mask with 2 classes
-            subplot(fig, [N, 4, n * 4 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
+            subplot(fig, [N, 3, n * 3 + 3], remapped_pred_mask, pred_mask_rgb, colormap, classes)
             # subplot(fig, [N, 4, n * 4 + 4], remapped_pred_mask, pred_mask_rgb, colormap, classes, prob[n, ...])
         else:
             raise ValueError
@@ -399,9 +406,12 @@ def create_fig_test(samples: list, save_path: str):
 
 
 def denormalize(img_tensor: torch.Tensor, mean: list , std: list) -> torch.Tensor:
-    for i in range(3):
-        img_tensor[i] = img_tensor[i] * std[i] + mean[i]
-    return img_tensor
+
+    mean = torch.tensor(mean, device=img_tensor.device).view(1, -1, 1, 1)
+    std = torch.tensor(std, device=img_tensor.device).view(1, -1, 1, 1)
+
+    return img_tensor * std + mean
+
 
 # if __name__ == "__main__":
 #     data_path = "D:/sythetic_data/dataset_100/256,256"

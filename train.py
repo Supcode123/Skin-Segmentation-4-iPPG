@@ -163,7 +163,8 @@ def main():
                     val_pred = torch.argmax(val_pred, dim=1)
                 if val_dataset.num_classes == 2:
                     val_pred = (torch.sigmoid(val_pred) > 0.5).int().squeeze(1)
-
+                # unique_labels = torch.unique(val_pred)
+                # print("标签值:", unique_labels)
                 # Only saving max. 4 examples
                 max_ind = min(4, val_pred.shape[0])
                 # max_ind = val_pred.shape[0]
