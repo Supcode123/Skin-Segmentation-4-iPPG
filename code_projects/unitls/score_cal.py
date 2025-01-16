@@ -3,7 +3,7 @@ import torch.nn as nn
 from torchmetrics.classification import MulticlassJaccardIndex, BinaryJaccardIndex
 
 
-def accuracy(pred: torch.Tensor, gth: torch.Tensor, classes: int, ignore_index: int, device):
+def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: int, device):
 
     mask = (gth != ignore_index).float().to(device)
     total_pixels = mask.sum().float()
@@ -25,6 +25,8 @@ def accuracy(pred: torch.Tensor, gth: torch.Tensor, classes: int, ignore_index: 
         acc_skin = correct_skin_pixels / total_skin
 
     elif classes == 2:
+        if model_name == "EfficientNetb0_UNet3Plus":
+           pred = pred[0]
         output = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
         correct = ((output == gth) * mask).sum().float()
         acc = correct / total_pixels
@@ -37,25 +39,37 @@ def accuracy(pred: torch.Tensor, gth: torch.Tensor, classes: int, ignore_index: 
     return acc, acc_skin
 
 
-def loss_cal(pred: torch.Tensor, gth: torch.Tensor, classes: int, ignore: int):
+def loss_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, device):
 
     if classes == 18:
         criterion = nn.CrossEntropyLoss(ignore_index=ignore)
         score = criterion(pred, gth)
     elif classes == 2:
         criterion = nn.BCEWithLogitsLoss(reduction='none')
-        loss = criterion(pred.squeeze(1), gth.float())
-        mask = (gth != ignore).float()
-        valid_loss = loss * mask
-        score = valid_loss.sum() / mask.sum()
-
+        score = torch.tensor(0.0, dtype=torch.float32).to(device)
+        if model_name == "EfficientNetb0_UNet3Plus":
+            loss_list=[]
+            w = [0.3, 0.2, 0.2, 0.2, 0.1]
+            for i in range(len(pred)):
+                loss = criterion(pred[i].squeeze(1), gth.float())
+                mask = (gth != ignore).float()
+                valid_loss = loss * mask
+                score = valid_loss.sum() / mask.sum()
+                loss_list.append(score)
+            for i in range(len(loss_list)):
+                score += loss_list[i] * w[i]
+        else:
+            loss = criterion(pred.squeeze(1), gth.float())
+            mask = (gth != ignore).float()
+            valid_loss = loss * mask
+            score = valid_loss.sum() / mask.sum()
     else:
         raise ValueError
 
     return score
 
 
-def miou_cal(pred: torch.Tensor, gth: torch.Tensor, classes: int, ignore: int, device):
+def miou_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, device):
 
     miou = torch.tensor(0.0, dtype=torch.float32).to(device)
     skin_miou = torch.tensor(0.0, dtype=torch.float32).to(device)
@@ -67,6 +81,8 @@ def miou_cal(pred: torch.Tensor, gth: torch.Tensor, classes: int, ignore: int, d
        miou = miou.mean()
 
     if classes == 2:
+       if model_name == "EfficientNetb0_UNet3Plus":
+            pred = pred[0]
        binary_miou = BinaryJaccardIndex(ignore_index=ignore).to(device)
        predictions = (torch.sigmoid(pred) > 0.5).float().squeeze(1)
        miou = binary_miou(predictions, gth)
@@ -75,7 +91,9 @@ def miou_cal(pred: torch.Tensor, gth: torch.Tensor, classes: int, ignore: int, d
     return miou, skin_miou
 
 
-def Dice_cal(pred: torch.Tensor, gth: torch.Tensor, ignore_index: int, device, smooth=1e-6):
+def Dice_cal(model_name, pred, gth: torch.Tensor, ignore_index: int, device, smooth=1e-6):
+    if model_name == "EfficientNetb0_UNet3Plus":
+        pred = pred[0]
     mask = (gth != ignore_index).float().to(device)
     pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
     pred_skin = (pred == 1).float()

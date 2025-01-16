@@ -69,7 +69,7 @@ def main():
     num_epochs = train_config["MAX_EPOCH"]
     best_val = 0.
 
-    #early_stopping = EarlyStopping(patience=train_config["PATIENCE"], min_delta=train_config["THRESHOLD"], verbose=True)
+    early_stopping = EarlyStopping(patience=train_config["PATIENCE"], min_delta=train_config["THRESHOLD"], verbose=True)
 
     for epoch in range(start_epoch, num_epochs):
         epoch_start_time = time.time()
@@ -90,11 +90,14 @@ def main():
             sample, label = sample.to(device), label.to(device)
             optimizer.zero_grad()
             train_pred = model(sample)
-            batch_loss = loss_cal(train_pred, label, train_dataset.num_classes, train_config["IGNORE_LABEL"])
+            batch_loss = loss_cal(model_config['NAME'], train_pred, label,
+                                  train_dataset.num_classes, train_config["IGNORE_LABEL"],
+                                  device)
             batch_loss.backward()
             optimizer.step()
             with torch.no_grad():
-                train_accuracy, _ = accuracy(train_pred, label, train_dataset.num_classes, 255, device)
+                train_accuracy, _ = accuracy(model_config['NAME'], train_pred, label,
+                                             train_dataset.num_classes, 255, device)
                 train_acc += train_accuracy.item()
             train_loss += batch_loss.item()
 
@@ -110,14 +113,17 @@ def main():
                 # print(f"Validation step: {val_step}")
                 sample, label = sample.to(device), label.to(device)
                 val_pred = model(sample)
-                batch_loss = loss_cal(val_pred, label, val_dataset.num_classes, train_config["IGNORE_LABEL"])
-                val_accuracy, val_skin_accuracy = accuracy(val_pred, label, val_dataset.num_classes, 255, device)
+                batch_loss = loss_cal(model_config['NAME'], val_pred, label,
+                                      val_dataset.num_classes, train_config["IGNORE_LABEL"], device)
+                val_accuracy, val_skin_accuracy = accuracy(model_config['NAME'], val_pred,
+                                                           label, val_dataset.num_classes, 255, device)
                 val_acc += val_accuracy.item()
                 val_skin_acc += val_skin_accuracy.item()
                 val_loss += batch_loss.item()
-                miou_score, skin_miou = miou_cal(val_pred, label, val_dataset.num_classes, 255, device)
+                miou_score, skin_miou = miou_cal(model_config['NAME'], val_pred,
+                                                 label, val_dataset.num_classes, 255, device)
                 if val_dataset.num_classes == 2:
-                    dice = Dice_cal(val_pred, label, 255, device)
+                    dice = Dice_cal(model_config['NAME'], val_pred, label, 255, device)
                     val_dice += dice.item()
                 val_miou += miou_score.item()
                 val_skin_miou += skin_miou.item()
@@ -134,10 +140,10 @@ def main():
             print(message)
             logger.info(message)
 
-            # early_stopping(val_miou / len(val_dataloader))
-            # if early_stopping.early_stop:
-            #     print(f"Training stopped early at epoch {epoch + 1}")
-            #     break
+            early_stopping(val_miou / len(val_dataloader))
+            if early_stopping.early_stop:
+                print(f"Training stopped early at epoch {epoch + 1}")
+                break
             current_score = val_miou / len(val_dataloader)
             if current_score > best_val:  # improve,better
                 best_val = current_score
@@ -162,6 +168,8 @@ def main():
                 if val_dataset.num_classes == 18:
                     val_pred = torch.argmax(val_pred, dim=1)
                 if val_dataset.num_classes == 2:
+                    if model_config['NAME'] == "EfficientNetb0_UNet3Plus":
+                        val_pred = val_pred[0]
                     val_pred = (torch.sigmoid(val_pred) > 0.5).int().squeeze(1)
                 # unique_labels = torch.unique(val_pred)
                 # print("标签值:", unique_labels)
