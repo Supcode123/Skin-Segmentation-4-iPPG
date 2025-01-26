@@ -1,0 +1,2 @@
+NAME: Mask2Former
+PRETRAIN: facebook/mask2former-swin-small-ade-semantic

@@ -47,7 +47,6 @@ class Dataset(data.Dataset):
            self.EXP = EXP2
         self.normalization = img_normalization
         self.transform = transform
-
         self.filter_mislabeled = filter_mislabeled
         self.mislabeled_samples = []
         mislabeled_file_path = './mislabeled_files.txt'

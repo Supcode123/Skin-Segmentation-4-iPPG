@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from matplotlib import pyplot as plt
 from tqdm import tqdm
-from code_projects.data.dataLoader import data_load
+from code_projects.data.dataLoader import Dataload
 from code_projects.data.experiments import remap_label
 from models.Archi import model_select
 from code_projects.unitls.before_train import parse_train_args, get_train_info, \
@@ -27,11 +27,10 @@ def main():
 
     print("##### Load data ... #####")
 
-    train_dataset, train_dataloader, val_dataset, val_dataloader, _, _ = data_load(
+    train_dataset, train_dataloader, val_dataset, val_dataloader, _, _ = Dataload(
         root=args.data_path,
         train_info=train_config,
-        data_info=data_config
-    )
+        data_info=data_config).get_dataloaders()
     print(f"{len(train_dataset)} training samples.")
     print(f"{len(val_dataset)} validation samples.")
 
@@ -153,7 +152,7 @@ def main():
                 tb_writer.add_scalar('train/accuracy', train_acc / len(train_dataloader), epoch + 1)
                 tb_writer.add_scalar('train/learning_rate', optimizer.param_groups[0]['lr'], epoch + 1)
                 tb_writer.add_scalar('val/loss', val_loss / len(val_dataloader), epoch + 1)
-                tb_writer.add_scalar('val/accuracy', val_acc / len(train_dataloader), epoch + 1)
+                tb_writer.add_scalar('val/accuracy', val_acc / len(val_dataloader), epoch + 1)
                 tb_writer.add_scalar('val/mIoU', val_miou / len(val_dataloader), epoch + 1)
                 tb_writer.add_scalar('val/Dice', val_dice / len(val_dataloader), epoch + 1)
 

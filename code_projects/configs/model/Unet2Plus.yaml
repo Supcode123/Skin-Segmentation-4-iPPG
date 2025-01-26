@@ -1,0 +1,7 @@
+NAME: UnetPlusPlus
+
+BACKBONE: efficientnet-b0
+HEAD: UnetPlusPlus
+ENCODER_WEIGHTS: imagenet
+ENCODER_DEPTH: 5
+DECODER_CHANNELS: [256, 128, 64, 32, 16]
