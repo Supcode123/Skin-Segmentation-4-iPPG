@@ -45,7 +45,8 @@ if __name__=="__main__":
     print("##### Load models ...###")
     model = Mask2FormerFinetuner(model_config, train_config, output_dir)
     # model=Mask2FormerFinetuner(ID2LABEL, LEARNING_RATE)
-
+    print(model.id2label)
+    print(model.label2id)
     CHECKPOINT_CALLBACK = ModelCheckpoint(
                                           dirpath=os.path.join(output_dir,"checkpoints/"),
                                           filename="epoch_{epoch:02d}-valLoss_{valLoss:.2f}",

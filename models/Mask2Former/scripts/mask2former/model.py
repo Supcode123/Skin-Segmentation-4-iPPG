@@ -28,15 +28,14 @@ class Mask2FormerFinetuner(pl.LightningModule):
             ignore_mismatched_sizes=True,
         )
         self.processor = AutoImageProcessor.from_pretrained(model_config['PRETRAIN'], use_fast=True)
-        # evaluate.load
-        self.test_mean_iou = evaluate.load("mean_iou")
-
+        evaluate.load
+        self._mean_iou = evaluate.load("mean_iou")
         self.metrics_cache = []
 
-    def lr_lambda(self, epoch):
-        return max(
-            (1 - epoch / self.train_config['EPOCH']) ** self.train_config['POLYNOMIAL_POWER'],
-            self.train_config['MIN_LR'])
+    # def lr_lambda(self, epoch):
+    #     return max(
+    #         (1 - epoch / self.train_config['EPOCH']) ** self.train_config['POLYNOMIAL_POWER'],
+    #         self.train_config['MIN_LR'])
     def forward(self, pixel_values, mask_labels=None, class_labels=None):
         # Your model's forward method
         return self.model(pixel_values=pixel_values, mask_labels=mask_labels, class_labels=class_labels)
@@ -52,9 +51,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
 
     def on_train_end(self):
         with open(os.path.join(self.output_dir, 'metrics.json'), 'w') as f:
-            for epoch_metrics in self.metrics_cache:
-                json.dump(epoch_metrics, f)
-                f.write('\n')
+                json.dump(self.metrics_cache, f, indent=4)
         print("****  training end  ****")
 
     def training_step(self, batch, batch_idx):
@@ -64,10 +61,13 @@ class Mask2FormerFinetuner(pl.LightningModule):
             class_labels=batch["class_labels"],
         )
         loss = outputs.loss
-        self.log("trainLoss", loss, sync_dist=self.trainer.num_devices > 1,  batch_size=self.train_config['BATCH_SIZE'])
+        self.log("trainLoss", loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
+                 logger=True, prog_bar=True)
 
         lr = self.trainer.optimizers[0].param_groups[0]['lr']
-        print(f"Current learning rate: {lr}")
+        self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
+                  on_epoch=True, logger=True, prog_bar=True)
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -77,28 +77,23 @@ class Mask2FormerFinetuner(pl.LightningModule):
             class_labels=[labels for labels in batch["class_labels"]],
         )
         loss = outputs.loss
-        metrics = self.get_metrics(outputs, batch)
+        metrics = self.get_metrics(outputs, batch, batch_idx)
         self.metrics = metrics
-        self.log("valLoss", loss, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCH_SIZE'])
-        lr = self.trainer.optimizers[0].param_groups[0]['lr']
-        self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
-                 batch_size=self.train_config['BATCH_SIZE'], on_epoch=True, logger=True, prog_bar=True)
+
+        self.log("valLoss", loss, sync_dist=self.trainer.num_devices > 1,on_epoch=True,
+                 logger=True, prog_bar=True)
+
         for k, v in metrics.items():
-            self.log(k, v, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCH_SIZE'])
+            self.log(k, v, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
+                 logger=True, prog_bar=True)
         return loss
 
     def on_epoch_end(self):
 
-        total_time = time.time() - self.start_time
-        epoch_metrics = {'epoch': self.current_epoch, **self.metrics}
+        self.total_time = time.time() - self.start_time
+        epoch_metrics = {'epoch': self.current_epoch+1, **self.metrics}
         self.metrics_cache.append(epoch_metrics)
 
-        # 在终端打印当前 epoch 的所有日志
-        print("*************************************")
-        print(f"Epoch {self.current_epoch + 1}/{self.trainer.max_epochs}, 'training_time': {total_time} :")
-        for key, value in self.metrics.items():
-            print(f"{key}: {value}")
-        print("*************************************")
     def test_step(self, batch, batch_idx):
         outputs = self(
             pixel_values=batch["pixel_values"],
@@ -106,13 +101,17 @@ class Mask2FormerFinetuner(pl.LightningModule):
             class_labels=[labels for labels in batch["class_labels"]],
         )
         loss = outputs.loss
-        metrics = self.get_metrics(outputs, batch)
-        self.log("testLoss", loss, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCH_SIZE'])
+        metrics = self.get_metrics(outputs, batch, batch_idx)
+        self.metrics = metrics
+
+        self.log("testLoss", loss, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCH_SIZE'],
+                 logger=True, prog_bar=True)
         for k, v in metrics.items():
-            self.log(k, v, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCH_SIZE'])
+            self.log(k, v, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCH_SIZE'],
+                     logger=True, prog_bar=True)
         return metrics
 
-    def get_metrics(self,outputs, batch):
+    def get_metrics(self,outputs, batch, batch_idx):
         original_images = batch["original_images"]
         ground_truth = batch["original_segmentation_maps"]
         target_sizes = [(image.shape[1], image.shape[2]) for image in original_images]
@@ -134,11 +133,11 @@ class Mask2FormerFinetuner(pl.LightningModule):
         # percentage_fp = (false_positives / total_instances)
 
         # Calculate IoU and accuracy metrics
-        metrics = self.test_mean_iou._compute(
+        metrics = self._mean_iou._compute(
             predictions=predictions,
             references=ground_truth[0],
             num_labels=self.num_classes,
-            ignore_index=255,
+            ignore_index=254,
             reduce_labels=False,
         )
 
