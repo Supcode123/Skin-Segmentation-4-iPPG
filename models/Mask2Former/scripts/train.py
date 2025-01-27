@@ -1,10 +1,12 @@
+import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
+import os
 import pytorch_lightning as pl
 import torch
-
-from models.Mask2Former.scripts.mask2former import SegmentationDataModule
-from models.Mask2Former.scripts.mask2former.config import _args, _config
+from mask2former import SegmentationDataModule
+from mask2former.config import _args, _config
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 
@@ -49,19 +51,22 @@ if __name__=="__main__":
                                           filename="epoch_{epoch:02d}-valLoss_{valLoss:.2f}",
                                           save_top_k=1,
                                           monitor="valLoss",
+                                          mode="min",
                                           every_n_epochs=1,  # Save the model at every epoch
+                                          save_weights_only=True,
                                           )
     LOGGER = TensorBoardLogger(save_dir=output_dir,
                                name="lightning_tensorboard",
                                version='',
                                log_graph=True)
-
+    # data_module.setup("fit")
     trainer = pl.Trainer(
             logger=LOGGER,
             accelerator='cuda',
             devices=train_config['DEVICES'],
             # strategy="ddp",
             callbacks=[CHECKPOINT_CALLBACK],
+            log_every_n_steps=train_config['LOG_INTERVALS'],
             max_epochs=train_config['EPOCH']
         )
     print("Training starts!!")

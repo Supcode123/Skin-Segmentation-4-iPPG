@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoImageProcessor
 import albumentations as A
 
-from data.experiments import EXP2
+from code_projects.data.experiments import EXP2
 from models.Mask2Former.scripts.mask2former.config import _args, _config
 
 
@@ -83,7 +83,7 @@ class SegmentationDataModule(pl.LightningDataModule):
                                         hue=(-0.1, 0.1),
                                         p=0.8),
                                     A.GaussNoise(
-                                        var_limit=(10.0, 50.0),
+                                        var_limit=50.0,
                                         p=0.3),
                                 ])
             ) # Add your transforms here
@@ -102,15 +102,11 @@ class SegmentationDataModule(pl.LightningDataModule):
         train_loader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True,
                           num_workers=self.num_workers, drop_last=True, pin_memory=True,
                           persistent_workers=False, prefetch_factor=None, collate_fn=self.collate_fn)
-        print("Initializing train dataloader")
-        #iter(train_loader)  # 确保加载器被正确迭代
         return train_loader
     def val_dataloader(self):
         val_loader = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False,
                           num_workers=self.num_workers, drop_last=True, pin_memory=True,
                           persistent_workers=False, prefetch_factor=None, collate_fn=self.collate_fn)
-        print("Initializing val dataloader")
-        #iter(val_loader)  # 确保加载器被正确迭代
         return val_loader
     def test_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False,

@@ -44,7 +44,7 @@ class Dataload():
                                         p=0.8),
                                     # Randomly apply Gaussian noise (to simulate ambient light interference)
                                     A.GaussNoise(
-                                        var_limit=(10.0, 50.0),
+                                        var_limit=50.0,
                                         p=0.3),
                                 ]),
                                 img_normalization=A.Normalize(mean=data_info['MEAN'], std=data_info['STD']),

@@ -27,7 +27,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
             label2id=self.label2id,
             ignore_mismatched_sizes=True,
         )
-        self.processor = AutoImageProcessor.from_pretrained(model_config['PRETRAIN'])
+        self.processor = AutoImageProcessor.from_pretrained(model_config['PRETRAIN'], use_fast=True)
         # evaluate.load
         self.test_mean_iou = evaluate.load("mean_iou")
 
@@ -50,12 +50,12 @@ class Mask2FormerFinetuner(pl.LightningModule):
     def on_train_start(self):
         self.start_time = time.time()
 
-
     def on_train_end(self):
         with open(os.path.join(self.output_dir, 'metrics.json'), 'w') as f:
             for epoch_metrics in self.metrics_cache:
                 json.dump(epoch_metrics, f)
                 f.write('\n')
+        print("****  training end  ****")
 
     def training_step(self, batch, batch_idx):
         outputs = self(
@@ -65,6 +65,9 @@ class Mask2FormerFinetuner(pl.LightningModule):
         )
         loss = outputs.loss
         self.log("trainLoss", loss, sync_dist=self.trainer.num_devices > 1,  batch_size=self.train_config['BATCH_SIZE'])
+
+        lr = self.trainer.optimizers[0].param_groups[0]['lr']
+        print(f"Current learning rate: {lr}")
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -75,7 +78,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
         )
         loss = outputs.loss
         metrics = self.get_metrics(outputs, batch)
-
+        self.metrics = metrics
         self.log("valLoss", loss, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCH_SIZE'])
         lr = self.trainer.optimizers[0].param_groups[0]['lr']
         self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
@@ -91,10 +94,11 @@ class Mask2FormerFinetuner(pl.LightningModule):
         self.metrics_cache.append(epoch_metrics)
 
         # 在终端打印当前 epoch 的所有日志
+        print("*************************************")
         print(f"Epoch {self.current_epoch + 1}/{self.trainer.max_epochs}, 'training_time': {total_time} :")
         for key, value in self.metrics.items():
             print(f"{key}: {value}")
-
+        print("*************************************")
     def test_step(self, batch, batch_idx):
         outputs = self(
             pixel_values=batch["pixel_values"],

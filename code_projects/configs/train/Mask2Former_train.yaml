@@ -1,5 +1,6 @@
 #Training hyperparmeters
 
+LOG_INTERVALS: 30 # 60/2
 EPOCH: 1 #180
 PRECISION: 16-mixed
 DEVICES: 1 #[2,3]
@@ -10,7 +11,7 @@ LR: 0.001
 FACTOR: 0.1
 # MIN_LR: 8
 WORKERS: 8
-BATCH_SIZE: 2
+BATCH_SIZE: 1
 ID2LABEL:
     0: 'Non_Skin'
     1: 'Skin'
