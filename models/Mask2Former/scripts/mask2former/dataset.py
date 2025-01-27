@@ -13,20 +13,16 @@ from code_projects.data.experiments import EXP2
 from models.Mask2Former.scripts.mask2former.config import _args, _config
 
 
-def remap_mask(mask: np.ndarray, exp_dict: dict, ignore_label: int = 255) -> np.ndarray:
-
+def remap_mask(mask: torch.Tensor, exp_dict: dict, ignore_label: int = 255):
     if not hasattr(remap_mask, "remap_array"):
         class_remapping = exp_dict["LABEL"]
-        remap_array = np.full(256, ignore_label, dtype=np.uint8)
+        remap_array = torch.full((256,), ignore_label, dtype=torch.uint8, device=mask.device)
         for key, val in class_remapping.items():
             for v in val:
                 remap_array[v] = key
         remap_mask.remap_array = remap_array
     else:
         remap_array = remap_mask.remap_array
-
-    # Ensure mask values are within the valid range
-    assert mask.min() >= 0 and mask.max() <= 255, "Mask values must be in the range [0, 255]"
 
     # Apply the remapping using the remap_array
     remapped_mask = remap_array[mask]
@@ -51,8 +47,9 @@ class ImageSegmentationDataset(Dataset):
         # convert to C, H, W
         np_image = np_image.transpose(2,0,1)
         mask = Image.open(mask_path).convert("L")
-        mask=np.array(mask)
+        mask = torch.tensor(mask, dtype=torch.uint8, device='cuda' if torch.cuda.is_available() else 'cpu')
         np_mask = remap_mask(mask, self.EXP)
+        np_mask = np_mask.cpu().numpy()
         np_mask[np_mask == 255] = 1
 
         return np_image, np_mask
