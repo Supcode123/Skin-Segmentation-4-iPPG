@@ -2,8 +2,10 @@ import os.path
 
 import pytorch_lightning as pl
 import torch
+from torch.optim import AdamW
 from transformers import Mask2FormerForUniversalSegmentation
 from transformers import Mask2FormerImageProcessor
+from torch.optim.lr_scheduler import PolynomialLR
 import evaluate
 import time
 import json 
@@ -175,31 +177,28 @@ class Mask2FormerFinetuner(pl.LightningModule):
 
     def configure_optimizers(self):
         # AdamW optimizer with specified learning rate
-        optimizer = torch.optim.AdamW([p for p in self.parameters() if p.requires_grad], lr=self.lr,
-                                      weight_decay=self.train_config['WEIGHT_DECAY'])
+        optimizer = AdamW(
+            self.parameters(),
+            lr=self.train_config['LR'],
+            weight_decay=self.train_config['WEIGHT_DECAY'],
+            eps=1e-8,
+            betas=(0.9, 0.999)
+        )
 
-        # Define polynomial decay scheduler
-        # def poly_lr_scheduler(epoch):
-        #     # This is a basic implementation of the polynomial learning rate decay
-        #     # Adjust the parameters as needed
-        #     max_epoch = self.train_config['EPOCH']  # Total number of epochs for training
-        #     power = self.train_config['POWER']  # Polynomial power
-        #     return (1 - epoch / max_epoch) ** power
-        #
-        # scheduler = {
-        #     'scheduler': torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=poly_lr_scheduler),
-        #     'interval': 'epoch',  # Update every epoch
-        #     'frequency': 1,  # Every epoch
-        # }
-
-        # ReduceLROnPlateau scheduler
         scheduler = {
-            'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
-                                                                    factor=self.train_config['FACTOR'],
-                                                                    patience=self.train_config['PATIENCE']),
-            'reduce_on_plateau': True,  # Necessary for ReduceLROnPlateau
-            'monitor': 'valLoss'  # Metric to monitor for reducing learning rate
+            'scheduler': PolynomialLR(optimizer, total_iters=self.self.train_config['EPOCH'],
+                                      power=self.train_config['POWER']),
+            "interval": "epoch",
+            "frequency": self.train_config['STEP'],
         }
+        # ReduceLROnPlateau scheduler
+        # scheduler = {
+        #     'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
+        #                                                             factor=self.train_config['FACTOR'],
+        #                                                             patience=self.train_config['PATIENCE']),
+        #     'reduce_on_plateau': True,  # Necessary for ReduceLROnPlateau
+        #     'monitor': 'mean_iou'  # Metric to monitor for reducing learning rate
+        # }
 
         return {'optimizer': optimizer, 'lr_scheduler': scheduler}
 

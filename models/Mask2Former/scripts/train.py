@@ -1,5 +1,8 @@
 import sys
 import os
+
+from pytorch_lightning.callbacks import EarlyStopping
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 import os
@@ -45,6 +48,13 @@ if __name__ == "__main__":
     print("##### Load models ...###")
     model = Mask2FormerFinetuner(model_config, train_config, output_dir)
     # model=Mask2FormerFinetuner(ID2LABEL, LEARNING_RATE)
+    Early_Stopping = EarlyStopping(
+                                   monitor="mean_iou",
+                                   patience=train_config['PATIENCE'],
+                                   mode='max',
+                                   verbose=True,
+                                   min_delta=train_config['THRESHOLD']
+    )
 
     CHECKPOINT_CALLBACK = ModelCheckpoint(
                                           dirpath=os.path.join(output_dir,"checkpoints/"),
@@ -65,7 +75,7 @@ if __name__ == "__main__":
             accelerator='cuda',
             devices=train_config['DEVICES'],
             # strategy="ddp",
-            callbacks=[CHECKPOINT_CALLBACK],
+            callbacks=[Early_Stopping, CHECKPOINT_CALLBACK],
             log_every_n_steps=train_config['LOG_INTERVALS'],
             max_epochs=train_config['EPOCH']
         )
