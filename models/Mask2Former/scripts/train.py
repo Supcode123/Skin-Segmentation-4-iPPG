@@ -15,7 +15,7 @@ torch.set_float32_matmul_precision("medium")
 from mask2former import Mask2FormerFinetuner
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
 
     print("##### config Load ... #####")
 
@@ -45,13 +45,12 @@ if __name__=="__main__":
     print("##### Load models ...###")
     model = Mask2FormerFinetuner(model_config, train_config, output_dir)
     # model=Mask2FormerFinetuner(ID2LABEL, LEARNING_RATE)
-    print(model.id2label)
-    print(model.label2id)
+
     CHECKPOINT_CALLBACK = ModelCheckpoint(
                                           dirpath=os.path.join(output_dir,"checkpoints/"),
                                           filename="epoch_{epoch:02d}-valLoss_{valLoss:.2f}",
                                           save_top_k=1,
-                                          monitor="valLoss",
+                                          monitor="mean_iou",
                                           mode="min",
                                           every_n_epochs=1,  # Save the model at every epoch
                                           save_weights_only=True,

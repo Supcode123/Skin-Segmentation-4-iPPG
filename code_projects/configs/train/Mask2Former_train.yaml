@@ -7,12 +7,29 @@ DEVICES: 1 #[2,3]
 #lr Scheduler
 # POLYNOMIAL_POWER: 0.9
 PATIENCE: 30
-LR: 0.0001
+LR: 0.001
 FACTOR: 0.1
-# MIN_LR: 8
-WORKERS: 8
+WEIGHT_DECAY: 0.05
+POWER: 0.9
+MIN_LR: 0
+WORKERS: 0
 BATCH_SIZE: 1
 ID2LABEL:
-    0: 'Non_Skin'
-    1: 'Skin'
+   0: "SKIN"
+   1: "NOSE"
+   2: "RIGHT_EYE"
+   3: "LEFT_EYE"
+   4: "RIGHT_BROW"
+   5: "LEFT_BROW"
+   6: "RIGHT_EAR"
+   7: "LEFT_EAR"
+   8: "MOUTH_INTERIOR"
+   9: "TOP_LIP"
+   10: "BOTTOM_LIP"
+   11: "NECK"
+   12: "HAIR"
+   13: "BEARD"
+   14: "CLOTHING"
+   15: "GLASSES"
+   16: "HEADWEAR"
 
