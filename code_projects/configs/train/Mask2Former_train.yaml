@@ -14,25 +14,28 @@ LR: 0.0001
 STEP: 1
 POWER: 0.9
 MIN_LR: 0
-WORKERS: 8
+WORKERS: 0
 BATCH_SIZE: 1
 ID2LABEL:
    0: "BACKGROUND"
    1: "SKIN"
-   2: "NOSE"
-   3: "RIGHT_EYE"
-   4: "LEFT_EYE"
-   5: "RIGHT_BROW"
-   6: "LEFT_BROW"
-   7: "RIGHT_EAR"
-   8: "LEFT_EAR"
-   9: "MOUTH_INTERIOR"
-   10: "TOP_LIP"
-   11: "BOTTOM_LIP"
-   12: "NECK"
-   13: "HAIR"
-   14: "BEARD"
-   15: "CLOTHING"
-   16: "GLASSES"
-   17: "HEADWEAR"
+   2: "Non_SKIN"
+#   0: "BACKGROUND"
+#   1: "SKIN"
+#   2: "NOSE"
+#   3: "RIGHT_EYE"
+#   4: "LEFT_EYE"
+#   5: "RIGHT_BROW"
+#   6: "LEFT_BROW"
+#   7: "RIGHT_EAR"
+#   8: "LEFT_EAR"
+#   9: "MOUTH_INTERIOR"
+#   10: "TOP_LIP"
+#   11: "BOTTOM_LIP"
+#   12: "NECK"
+#   13: "HAIR"
+#   14: "BEARD"
+#   15: "CLOTHING"
+#   16: "GLASSES"
+#   17: "HEADWEAR"
 

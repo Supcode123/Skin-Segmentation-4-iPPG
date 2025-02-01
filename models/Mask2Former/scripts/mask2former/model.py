@@ -1,5 +1,4 @@
-import os.path
-
+import os
 import pytorch_lightning as pl
 import torch
 from torch.optim import AdamW
@@ -10,7 +9,7 @@ import evaluate
 import time
 import json 
 import numpy as np
-
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
 class Mask2FormerFinetuner(pl.LightningModule):
 
@@ -32,9 +31,10 @@ class Mask2FormerFinetuner(pl.LightningModule):
                                                    do_rescale=False, do_normalize=False,
                                                    do_reduce_labels=True)
 
-        # evaluate.load
-        self.metrics = evaluate.load("mean_iou")
+        self.train_outputs = []
+        self.validation_outputs = []
         self.metrics_cache = []
+        self.metrics = evaluate.load("mean_iou")
 
     # def lr_lambda(self, epoch):
     #     return max(
@@ -49,11 +49,9 @@ class Mask2FormerFinetuner(pl.LightningModule):
         batch['mask_labels'] = [label.to(device) for label in batch['mask_labels']]
         batch['class_labels'] = [label.to(device) for label in batch['class_labels']]
         return batch
-        
-    def on_train_start(self):
-        self.start_time = time.time()
 
     def on_train_end(self):
+
         with open(os.path.join(self.output_dir, 'metrics.json'), 'w') as f:
                 json.dump(self.metrics_cache, f, indent=4)
         print("****  training end  ****")
@@ -65,12 +63,18 @@ class Mask2FormerFinetuner(pl.LightningModule):
             class_labels=batch["class_labels"],
         )
         loss = outputs.loss
-        self.log("trainLoss", loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
-                 logger=True, prog_bar=True)
+        self.train_outputs.append(loss.detach())
+
+    def on_train_epoch_end(self):
+        if not self.train_outputs:
+            return
         lr = self.trainer.optimizers[0].param_groups[0]['lr']
         self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
-                  on_epoch=True, logger=True, prog_bar=True)
-        return loss
+                 on_epoch=True, logger=True, prog_bar=True)
+        avg_loss = torch.mean(torch.stack(self.train_outputs))
+        self.log("trainLoss", avg_loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
+                 logger=True, prog_bar=True)
+        self.train_outputs.clear()
 
     def validation_step(self, batch, batch_idx):
         outputs = self(
@@ -80,21 +84,38 @@ class Mask2FormerFinetuner(pl.LightningModule):
         )
         loss = outputs.loss
         metrics = self.get_metrics(outputs, batch)
+        self.validation_outputs.append({"val_loss": loss, "metrics": metrics})
 
-        self.log("valLoss", loss, sync_dist=self.trainer.num_devices > 1,on_epoch=True,
-                 batch_size=self.train_config['BATCH_SIZE'], logger=True, prog_bar=True)
+    def on_validation_epoch_end(self):
+        if not self.validation_outputs:
+            return
 
-        for k, v in metrics.items():
-            self.log(k, v, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
-                 batch_size=self.train_config['BATCH_SIZE'], logger=True, prog_bar=True)
-        return metrics
+        avg_loss = torch.mean(torch.stack([x["val_loss"] for x in self.validation_outputs]))
+        self.log("valLoss", avg_loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
+                 logger=True, prog_bar=True)
 
-    def on_epoch_end(self):
-        self.total_time = time.time() - self.start_time
-        epoch_metrics = {'epoch': self.current_epoch+1}
-        for metric_name, metric_value in self.trainer.callback_metrics.items():
-            epoch_metrics[metric_name] = metric_value.item()
-        self.metrics_cache.append(epoch_metrics)
+        epoch_metrics = {"epoch": self.current_epoch + 1}
+
+        all_metrics = {}
+        for output in self.validation_outputs:
+            for k, v in output["metrics"].items():
+                if k not in all_metrics:
+                    all_metrics[k] = []
+                all_metrics[k].append(v)
+
+        # Now average the metrics
+        for k, v_list in all_metrics.items():
+            all_metrics[k] = np.mean(v_list)
+
+        # Log metrics and add them to epoch metrics
+        for metric_name, metric_value in all_metrics.items():
+            self.log(metric_name, metric_value, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
+                     logger=True, prog_bar=False)
+            epoch_metrics[metric_name] = metric_value
+
+        if self.trainer.is_global_zero:
+            self.metrics_cache = [epoch_metrics]
+        self.validation_outputs.clear()
         print(f"##### epoch {self.current_epoch + 1} metrics saved #####")
 
     def test_step(self, batch, batch_idx):
@@ -121,21 +142,10 @@ class Mask2FormerFinetuner(pl.LightningModule):
         # predict segmentation maps
         predicted_segmentation_maps = self.processor.post_process_semantic_segmentation(outputs,
                                                                                         target_sizes=target_sizes)
-        # predictions = predicted_segmentation_maps[0].cpu().numpy()
-
-        # Calculate FN and FP
-        # false_negatives = np.sum((predictions == 0) & (ground_truth[0] == 1))
-        # false_positives = np.sum((predictions == 1) & (ground_truth[0] == 0))
-
-        # Total number of instances
-        # total_instances = np.prod(predictions.shape)
-
-        # # Calculate percentages
-        # percentage_fn = (false_negatives / total_instances)
-        # percentage_fp = (false_positives / total_instances)
-
-        # Calculate IoU and accuracy metrics
-        # self.metrics.compute(num_labels=len(self.id2label), ignore_index=0)['mean_iou']
+        # print("Predicted Segmentation Maps Type:", len(predicted_segmentation_maps))
+        # print("Predicted Segmentation ", predicted_segmentation_maps[0].shape)
+        # print("Original Segmentation Maps Type:", type(ground_truth), "length: ", len(ground_truth))
+        print("Original Segmentation ", type(ground_truth[0]))
         metrics = self.metrics.compute(
             predictions=predicted_segmentation_maps,
             references=ground_truth,
@@ -145,35 +155,39 @@ class Mask2FormerFinetuner(pl.LightningModule):
         )
 
         # Extract per-category metrics
-        per_category_accuracy = metrics.pop("per_category_accuracy").tolist()
+        # per_category_accuracy = metrics.pop("per_category_accuracy").tolist()
         per_category_iou = metrics.pop("per_category_iou").tolist()
         # dice
-        # Compute per-category Dice coefficients
-        per_category_dice = []
-        for i in range(1, self.num_classes):
-            # Get binary masks for the current class
-            pred_class = (predicted_segmentation_maps == i)
-            gt_class = (ground_truth == i)
+        # Compute Skin Dice coefficients
+        for pred_map, gt_map in zip(predicted_segmentation_maps, ground_truth):
+            # Convert predicted tensor to numpy and ensure it's a binary mask for the current class (class 1)
+            pred_class = (pred_map == 1).cpu().numpy()
+            gt_class = (gt_map == 1).astype(np.uint8)
+
+            # Ensure that we ignore class 255
+            pred_class = pred_class * (gt_map != 255)
+            gt_class = gt_class * (gt_map != 255).astype(np.uint8)
 
             intersection = np.sum(pred_class * gt_class)
             union = np.sum(pred_class) + np.sum(gt_class)
 
             dice = (2 * intersection) / (union + 1e-6) if union > 0 else 0.0
-            per_category_dice.append(dice)
+
+
         # per_category_dice = [2 * iou / (iou + 1) if iou + 1 > 0 else 0 for iou in per_category_iou]
 
         # Re-define metrics dict to include per-category metrics
-        metrics = {
+        all_metrics = {
             "mean_iou": metrics["mean_iou"],
             "mean_accuracy": metrics["mean_accuracy"],
             # "False Negative": percentage_fn,
             # "False Positive": percentage_fp,
-            **{f"accuracy_{self.id2label[i]}": v for i, v in enumerate(per_category_accuracy)},
-            **{f"iou_{self.id2label[i]}": v for i, v in enumerate(per_category_iou)},
-            **{f"Dice_{self.id2label[i]}": v for i, v in enumerate(per_category_dice)}
+            #**{f"accuracy_{self.id2label[i]}": v for i, v in enumerate(per_category_accuracy)},
+            **{f"iou_{self.id2label[1]}": per_category_iou[1]},
+            **{f"Dice_{self.id2label[1]}": dice}
         }
 
-        return metrics
+        return all_metrics
 
     def configure_optimizers(self):
         # AdamW optimizer with specified learning rate
@@ -186,7 +200,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
         )
 
         scheduler = {
-            'scheduler': PolynomialLR(optimizer, total_iters=self.self.train_config['EPOCH'],
+            'scheduler': PolynomialLR(optimizer, total_iters=self.train_config['EPOCH'],
                                       power=self.train_config['POWER']),
             "interval": "epoch",
             "frequency": self.train_config['STEP'],

@@ -49,7 +49,7 @@ if __name__ == "__main__":
     model = Mask2FormerFinetuner(model_config, train_config, output_dir)
     # model=Mask2FormerFinetuner(ID2LABEL, LEARNING_RATE)
     Early_Stopping = EarlyStopping(
-                                   monitor="mean_iou",
+                                   monitor="iou_SKIN",
                                    patience=train_config['PATIENCE'],
                                    mode='max',
                                    verbose=True,
@@ -58,9 +58,9 @@ if __name__ == "__main__":
 
     CHECKPOINT_CALLBACK = ModelCheckpoint(
                                           dirpath=os.path.join(output_dir,"checkpoints/"),
-                                          filename="epoch_{epoch:02d}-valLoss_{valLoss:.2f}",
+                                          filename="epoch_{epoch:02d}-iou_SKIN_{iou_SKIN:.2f}",
                                           save_top_k=1,
-                                          monitor="mean_iou",
+                                          monitor="iou_SKIN",
                                           mode="min",
                                           every_n_epochs=1,  # Save the model at every epoch
                                           save_weights_only=True,
@@ -76,7 +76,6 @@ if __name__ == "__main__":
             devices=train_config['DEVICES'],
             # strategy="ddp",
             callbacks=[Early_Stopping, CHECKPOINT_CALLBACK],
-            log_every_n_steps=train_config['LOG_INTERVALS'],
             max_epochs=train_config['EPOCH']
         )
     print("Training starts!!")
