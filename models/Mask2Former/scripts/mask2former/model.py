@@ -110,7 +110,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
         # Log metrics and add them to epoch metrics
         for metric_name, metric_value in all_metrics.items():
             self.log(metric_name, metric_value, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
-                     logger=True, prog_bar=False)
+                     logger=True, prog_bar=True)
             epoch_metrics[metric_name] = metric_value
 
         if self.trainer.is_global_zero:
@@ -145,7 +145,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
         # print("Predicted Segmentation Maps Type:", len(predicted_segmentation_maps))
         # print("Predicted Segmentation ", predicted_segmentation_maps[0].shape)
         # print("Original Segmentation Maps Type:", type(ground_truth), "length: ", len(ground_truth))
-        print("Original Segmentation ", type(ground_truth[0]))
+        # print("Original Segmentation ", type(ground_truth[0]))
         metrics = self.metrics.compute(
             predictions=predicted_segmentation_maps,
             references=ground_truth,
