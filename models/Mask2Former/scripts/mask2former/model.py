@@ -65,12 +65,15 @@ class Mask2FormerFinetuner(pl.LightningModule):
         loss = outputs.loss
         self.train_outputs.append(loss.detach())
 
-    def on_train_epoch_end(self):
-        if not self.train_outputs:
-            return
+    def on_train_epoch_start(self) -> None:
         lr = self.trainer.optimizers[0].param_groups[0]['lr']
         self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
                  on_epoch=True, logger=True, prog_bar=True)
+
+    def on_train_epoch_end(self):
+        if not self.train_outputs:
+            return
+
         avg_loss = torch.mean(torch.stack(self.train_outputs))
         self.log("trainLoss", avg_loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
                  logger=True, prog_bar=True)
@@ -199,10 +202,12 @@ class Mask2FormerFinetuner(pl.LightningModule):
             betas=(0.9, 0.999)
         )
 
+        num_devices = torch.cuda.device_count()
+        total_iters = (self.train_config['EPOCH'] * self.train_config['INTERVALS']) // num_devices
         scheduler = {
-            'scheduler': PolynomialLR(optimizer, total_iters=self.train_config['EPOCH'],
+            'scheduler': PolynomialLR(optimizer, total_iters=total_iters,
                                       power=self.train_config['POWER']),
-            "interval": "epoch",
+            "interval": "step",
             "frequency": self.train_config['STEP'],
         }
         # ReduceLROnPlateau scheduler

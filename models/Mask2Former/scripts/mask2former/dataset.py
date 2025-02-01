@@ -113,14 +113,14 @@ class SegmentationDataModule(pl.LightningDataModule):
     def train_dataloader(self):
         train_loader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True,
                           num_workers=self.num_workers, drop_last=True, pin_memory=True,
-                          persistent_workers=True, prefetch_factor=2, collate_fn=self.collate_fn)
+                          persistent_workers=False, prefetch_factor=None, collate_fn=self.collate_fn)
         print(f"load train dataloader.")
         return train_loader
 
     def val_dataloader(self):
         val_loader = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False,
                           num_workers=self.num_workers, drop_last=True, pin_memory=True,
-                          persistent_workers=True, prefetch_factor=2, collate_fn=self.collate_fn)
+                          persistent_workers=False, prefetch_factor=None, collate_fn=self.collate_fn)
         print(f"load val dataloader.")
         return val_loader
     def test_dataloader(self):

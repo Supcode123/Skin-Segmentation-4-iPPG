@@ -61,7 +61,7 @@ if __name__ == "__main__":
                                           filename="epoch_{epoch:02d}-iou_SKIN_{iou_SKIN:.2f}",
                                           save_top_k=1,
                                           monitor="iou_SKIN",
-                                          mode="min",
+                                          mode="max",
                                           every_n_epochs=1,  # Save the model at every epoch
                                           save_weights_only=True,
                                           )

@@ -1,6 +1,6 @@
 #Training hyperparmeters
 
-LOG_INTERVALS: 30 # 60/2
+INTERVALS: 60 # 60/2
 EPOCH: 2 #180
 PRECISION: 16-mixed
 DEVICES: 1 #[2,3]
