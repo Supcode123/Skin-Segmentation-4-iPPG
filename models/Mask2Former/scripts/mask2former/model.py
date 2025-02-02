@@ -2,11 +2,11 @@ import os
 import pytorch_lightning as pl
 import torch
 from torch.optim import AdamW
+from torchmetrics import MeanMetric
 from transformers import Mask2FormerForUniversalSegmentation
 from transformers import Mask2FormerImageProcessor
 from torch.optim.lr_scheduler import PolynomialLR
 import evaluate
-import time
 import json 
 import numpy as np
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
@@ -15,6 +15,8 @@ class Mask2FormerFinetuner(pl.LightningModule):
 
     def __init__(self, model_config, train_config, output_dir):
         super(Mask2FormerFinetuner, self).__init__()
+        self.train_loss_metric = MeanMetric(sync_on_compute=True)
+        self.val_loss_metric = MeanMetric(sync_on_compute=True)
         self.model_config = model_config
         self.train_config = train_config
         self.output_dir = output_dir
@@ -31,9 +33,8 @@ class Mask2FormerFinetuner(pl.LightningModule):
                                                    do_rescale=False, do_normalize=False,
                                                    do_reduce_labels=True)
 
-        self.train_outputs = []
-        self.validation_outputs = []
         self.metrics_cache = []
+        self.validation_outputs = []
         self.metrics = evaluate.load("mean_iou")
 
     # def lr_lambda(self, epoch):
@@ -50,6 +51,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
         batch['class_labels'] = [label.to(device) for label in batch['class_labels']]
         return batch
 
+    @rank_zero_only
     def on_train_end(self):
 
         with open(os.path.join(self.output_dir, 'metrics.json'), 'w') as f:
@@ -63,21 +65,18 @@ class Mask2FormerFinetuner(pl.LightningModule):
             class_labels=batch["class_labels"],
         )
         loss = outputs.loss
-        self.train_outputs.append(loss.detach())
-
-    def on_train_epoch_start(self) -> None:
+        self.train_loss_metric.update(loss.detach())
         lr = self.trainer.optimizers[0].param_groups[0]['lr']
         self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
                  on_epoch=True, logger=True, prog_bar=True)
+        return loss
 
     def on_train_epoch_end(self):
-        if not self.train_outputs:
-            return
-
-        avg_loss = torch.mean(torch.stack(self.train_outputs))
+        avg_loss = self.train_loss_metric.compute()
         self.log("trainLoss", avg_loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
                  logger=True, prog_bar=True)
-        self.train_outputs.clear()
+        self.train_loss_metric.reset()
+
 
     def validation_step(self, batch, batch_idx):
         outputs = self(
@@ -87,28 +86,37 @@ class Mask2FormerFinetuner(pl.LightningModule):
         )
         loss = outputs.loss
         metrics = self.get_metrics(outputs, batch)
-        self.validation_outputs.append({"val_loss": loss, "metrics": metrics})
+        self.val_loss_metric.update(loss.detach())
+        self.validation_outputs.append(metrics)
+        return {"valLoss": loss, "metrics": metrics}
 
     def on_validation_epoch_end(self):
-        if not self.validation_outputs:
-            return
-
-        avg_loss = torch.mean(torch.stack([x["val_loss"] for x in self.validation_outputs]))
+        print(f"Running validation for epoch {self.current_epoch}")
+        avg_loss = self.val_loss_metric.compute()
         self.log("valLoss", avg_loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
                  logger=True, prog_bar=True)
+        self.val_loss_metric.reset()
 
         epoch_metrics = {"epoch": self.current_epoch + 1}
 
         all_metrics = {}
         for output in self.validation_outputs:
-            for k, v in output["metrics"].items():
+            for k, v in output.items():
                 if k not in all_metrics:
                     all_metrics[k] = []
                 all_metrics[k].append(v)
 
         # Now average the metrics
         for k, v_list in all_metrics.items():
-            all_metrics[k] = np.mean(v_list)
+            if k != "trainLoss" and k != "valLoss" and k != "learning_rate":
+                if torch.distributed.is_available() and torch.distributed.is_initialized():
+                    # Synchronize the values across all GPUs
+                    v_list = torch.tensor(v_list).to(self.device)
+                    torch.distributed.all_reduce(v_list)
+                    all_metrics[k] = v_list.mean().item()
+                else:
+                    # If not using distributed, fall back to simple mean
+                    all_metrics[k] = np.mean(v_list)
 
         # Log metrics and add them to epoch metrics
         for metric_name, metric_value in all_metrics.items():
@@ -117,7 +125,9 @@ class Mask2FormerFinetuner(pl.LightningModule):
             epoch_metrics[metric_name] = metric_value
 
         if self.trainer.is_global_zero:
-            self.metrics_cache = [epoch_metrics]
+            if not hasattr(self, "metrics_cache"):
+                self.metrics_cache = []
+            self.metrics_cache.append(epoch_metrics)
         self.validation_outputs.clear()
         print(f"##### epoch {self.current_epoch + 1} metrics saved #####")
 
