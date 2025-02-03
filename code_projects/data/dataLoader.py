@@ -91,8 +91,8 @@ class Dataload():
                                     )
 
     def get_dataloaders(self):
-        return self.train_dataloader, self.train_dataset, self.val_dataloader, \
-               self.val_dataset, self.test_dataloader,  self.test_dataset,
+        return self.train_dataset, self.train_dataloader, self.val_dataset, \
+               self.val_dataloader, self.test_dataset, self.test_dataloader
 
 
 # if __name__ == "__main__":
