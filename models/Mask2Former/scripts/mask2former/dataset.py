@@ -13,13 +13,13 @@ from models.Mask2Former.scripts.mask2former.experiments import EXP
 from models.Mask2Former.scripts.mask2former.config import _args, _config
 
 
-ADE_MEAN = np.array([123.675, 116.280, 103.530]) / 255
-ADE_STD = np.array([58.395, 57.120, 57.375]) / 255
+ADE_MEAN = [123.675, 116.280, 103.530]
+ADE_STD = [58.395, 57.120, 57.375]
 
 train_transform = A.Compose([
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
-    A.Normalize(mean=list(ADE_MEAN), std=list(ADE_STD)),
+    A.Normalize(mean=ADE_MEAN, std=ADE_STD),
     # Randomly shift,zoom,rotate
     A.ShiftScaleRotate(
         shift_limit=0.1,
@@ -107,7 +107,7 @@ class SegmentationDataModule(pl.LightningDataModule):
         if stage == 'test' or stage is None:
             self.test_dataset = ImageSegmentationDataset(images_dir=os.path.join(self.dataset_dir, 'test', 'images'),
                                                          masks_dir=os.path.join(self.dataset_dir, 'test', 'labels'),
-                                                         transform=A.Normalize(mean=list(ADE_MEAN), std=list(ADE_STD))) # Add your transforms here
+                                                         transform=A.Normalize(mean=ADE_MEAN, std=ADE_STD)) # Add your transforms here
             print(f"{len(self.test_dataset)} validation samples.")
 
     def train_dataloader(self):
