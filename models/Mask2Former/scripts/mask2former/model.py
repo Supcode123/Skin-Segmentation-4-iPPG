@@ -66,12 +66,13 @@ class Mask2FormerFinetuner(pl.LightningModule):
         )
         loss = outputs.loss
         self.train_loss_metric.update(loss.detach())
-        lr = self.trainer.optimizers[0].param_groups[0]['lr']
-        self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
-                 on_epoch=True, logger=True, prog_bar=True)
+
         return loss
 
     def on_train_epoch_end(self):
+        lr = self.trainer.optimizers[0].param_groups[0]['lr']
+        self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
+                 on_epoch=True, logger=True, prog_bar=True)
         avg_loss = self.train_loss_metric.compute()
         self.log("trainLoss", avg_loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
                  logger=True, prog_bar=True)

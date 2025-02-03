@@ -389,7 +389,7 @@ def create_fig_test(samples: list, save_path: str):
         remapped_gt_mask, _, _ = remap_simple(samples[n][2].cpu().numpy())
         pred_mask_rgb = mask_to_colormap(remapped_pred_mask, colormap=colormap)
         gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)
-        sample = denormalize(samples[n][3], [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        sample = denormalize(samples[n][3], [123.675, 116.28, 103.53], [58.395, 57.12, 57.375])
         img = sample.permute(1, 2, 0).cpu().numpy()
         # image
         img_name = samples[n][0][0].split('.')[0]

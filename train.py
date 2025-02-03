@@ -88,7 +88,10 @@ def main():
             pbar.set_description(f"epoch: {epoch + 1}/{num_epochs}")
             sample, label = sample.to(device), label.to(device)
             optimizer.zero_grad()
-            train_pred = model(sample)
+            if model_config['NAME'] == "SegNext":
+                train_pred = model._foward(sample)
+            else:
+                train_pred = model(sample)
             batch_loss = loss_cal(model_config['NAME'], train_pred, label,
                                   train_dataset.num_classes, train_config["IGNORE_LABEL"],
                                   device)
@@ -111,7 +114,10 @@ def main():
             for val_step, (sample, label, _) in enumerate(val_dataloader, start=1):
                 # print(f"Validation step: {val_step}")
                 sample, label = sample.to(device), label.to(device)
-                val_pred = model(sample)
+                if model_config['NAME'] == "SegNext":
+                    val_pred = model._foward(sample)
+                else:
+                    val_pred = model(sample)
                 batch_loss = loss_cal(model_config['NAME'], val_pred, label,
                                       val_dataset.num_classes, train_config["IGNORE_LABEL"], device)
                 val_accuracy, val_skin_accuracy = accuracy(model_config['NAME'], val_pred,
