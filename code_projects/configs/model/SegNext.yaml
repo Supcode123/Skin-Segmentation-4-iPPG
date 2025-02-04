@@ -1,25 +1,13 @@
 NAME: SegNext
 
 BACKBONE:
-  act_cfg:
-    type: 'GELU'
-  attention_kernel_paddings:
-    - 2
-    - [ 0, 3 ]
-    - [ 0, 5 ]
-    - [ 0, 10 ]
-  attention_kernel_sizes:
-    - 5
-    - [ 1, 7 ]
-    - [ 1, 11 ]
-    - [ 1, 21 ]
+
   depths:
     - 3
     - 5
     - 27
     - 3
   drop_path_rate: 0.3
-  drop_rate: 0.0
   embed_dims:
     - 64
     - 128
@@ -36,12 +24,11 @@ BACKBONE:
   norm_cfg:
     requires_grad: true
     type: 'BN'
-  type: 'MSCAN'
+
 
 DECODER_HEAD:
-  align_corners: false
+
   channels: 1024
-  dropout_ratio: 0.1
   ham_channels: 1024
   ham_kwargs:
     MD_R: 16
@@ -58,16 +45,13 @@ DECODER_HEAD:
     - 1
     - 2
     - 3
-#    loss_decode:
-#      loss_weight: 1.0
-#      type: 'CrossEntropyLoss'
-#      use_sigmoid: false
+
   norm_cfg:
     num_groups: 32
     requires_grad: true
     type: 'GN'
   num_classes: 1
-  type: 'LightHamHead'
+
 
 
 

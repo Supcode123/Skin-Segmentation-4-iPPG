@@ -2,16 +2,39 @@ import os
 import sys
 
 import yaml
+from mmseg.models import MSCAN, LightHamHead
+# sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'mmsegmentation')))
+from torch import nn
 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'mmsegmentation')))
-from mmseg.models.segmentors import EncoderDecoder
 
+class seg_next(nn.Module):
 
-def seg_next(model_config):
-    model = EncoderDecoder(backbone=model_config["BACKBONE"],
-                           decode_head=model_config["DECODER_HEAD"])
-    return model
+      def __init__(self, model_config):
+          super(seg_next, self).__init__()
+          self.model_config = model_config
+          self.backbone = MSCAN(
+                                embed_dims=model_config.BACKBONE["embed_dims"],
+                                mlp_ratios=model_config.BACKBONE["mlp_ratios"],
+                                drop_path_rate=model_config.BACKBONE['drop_path_rate'],
+                                depths=model_config.BACKBONE["depths"],
+                                norm_cfg=model_config.BACKBONE['norm_cfg'],
+                                init_cfg=model_config.BACKBONE['init_cfg'], # pretrain
+                                )
+          self.decoder = LightHamHead(
+                                num_classes=model_config.DECODER_HEAD['num_classes'],
+                                channels=model_config.DECODER_HEAD['channels'],
+                                ham_channels=model_config.DECODER_HEAD['ham_channels'],
+                                ham_kwargs=model_config.DECODER_HEAD['ham_kwargs'],
+                                in_channels=model_config.DECODER_HEAD['in_channels'],
+                                in_index=model_config.DECODER_HEAD['in_index'],
+                                norm_cfg=model_config.DECODER_HEAD['norm_cfg']
+          )
 
+      def forward(self, x):
+          feature = self.backbone(x),
+          output = self.decoder(feature)
+
+          return output
 
 # if __name__ == "__main__":
 #
