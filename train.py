@@ -88,6 +88,7 @@ def main():
             sample, label = sample.to(device), label.to(device)
             optimizer.zero_grad()
             train_pred = model(sample)
+            print("******pred: ", train_pred.shape)
             batch_loss = loss_cal(model_config['NAME'], train_pred, label,
                                   train_dataset.num_classes, train_config["IGNORE_LABEL"],
                                   device)
@@ -110,10 +111,10 @@ def main():
             for val_step, (sample, label, _) in enumerate(val_dataloader, start=1):
                 # print(f"Validation step: {val_step}")
                 sample, label = sample.to(device), label.to(device)
-                if model_config['NAME'] == "SegNext":
-                    val_pred = model._foward(sample)
-                else:
-                    val_pred = model(sample)
+                val_pred = model(sample)
+                print("Segmentation logits unique values:", torch.unique(val_pred.argmax(dim=1)))
+                print("Ground truth unique values:", torch.unique(label))
+
                 batch_loss = loss_cal(model_config['NAME'], val_pred, label,
                                       val_dataset.num_classes, train_config["IGNORE_LABEL"], device)
                 val_accuracy, val_skin_accuracy = accuracy(model_config['NAME'], val_pred,
