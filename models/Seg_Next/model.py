@@ -36,7 +36,7 @@ class seg_next(nn.Module):
               input=output,
               size=(256,256),
               mode="bilinear",
-              align_corners=False
+              align_corners=True
           )
 
           return output
