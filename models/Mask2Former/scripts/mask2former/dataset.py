@@ -2,6 +2,7 @@ import os
 
 import torch
 from PIL import Image
+from albumentations.pytorch.functional import img_to_tensor
 from torch.utils.data import Dataset
 import numpy as np
 import pytorch_lightning as pl
@@ -13,13 +14,12 @@ from models.Mask2Former.scripts.mask2former.experiments import EXP
 from models.Mask2Former.scripts.mask2former.config import _args, _config
 
 
-ADE_MEAN = [123.675, 116.280, 103.530]
-ADE_STD = [58.395, 57.120, 57.375]
+ADE_MEAN = [0.485, 0.456, 0.406]
+ADE_STD = [0.229, 0.224, 0.225]
 
 train_transform = A.Compose([
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
-    A.Normalize(mean=ADE_MEAN, std=ADE_STD),
     # Randomly shift,zoom,rotate
     A.ShiftScaleRotate(
         shift_limit=0.1,
@@ -40,23 +40,24 @@ train_transform = A.Compose([
 ])
 
 
-def remap_mask(mask: torch.Tensor, exp_dict: dict, ignore_label: int = 255):
-
-    class_remapping = exp_dict["LABEL"]
-    remap_array = np.full(256, ignore_label, dtype=np.uint8)
-    for key, val in class_remapping.items():
-        for v in val:
-            remap_array[v] = key
-    mask = mask.int()
-    remap_mask = remap_array[mask]
-    remap_mask_tensor = torch.from_numpy(remap_mask)
-    return remap_mask_tensor
+# def remap_mask(mask: torch.Tensor, exp_dict: dict, ignore_label: int = 255):
+#
+#     class_remapping = exp_dict["LABEL"]
+#     remap_array = np.full(256, ignore_label, dtype=np.uint8)
+#     for key, val in class_remapping.items():
+#         for v in val:
+#             remap_array[v] = key
+#     mask = mask.int()
+#     remap_mask = remap_array[mask]
+#     remap_mask_tensor = torch.from_numpy(remap_mask)
+#     return remap_mask_tensor
 
 class ImageSegmentationDataset(Dataset):
-    def __init__(self, images_dir, masks_dir, transform=None):
+    def __init__(self, images_dir, masks_dir, normalization, transform=None ):
         self.images_dir = images_dir
         self.masks_dir = masks_dir
         self.transform = transform
+        self.normalization = normalization
         self.filenames = [os.path.splitext(f)[0] for f in os.listdir(images_dir) if not f.startswith('.')]
         self.EXP = EXP
     def __len__(self):
@@ -68,14 +69,23 @@ class ImageSegmentationDataset(Dataset):
 
         original_image = np.array(Image.open(img_path).convert("RGB"))
         original_mask = np.array(Image.open(mask_path).convert("L"))
-        # np_mask[np_mask == 255] = 0
-        transformed = self.transform(image=original_image, mask=original_mask)
-        image, mask = transformed['image'], transformed['mask']
-        mask = torch.from_numpy(mask)
-        mask = remap_mask(mask, self.EXP)
-
+        if self.transform is not None:
+            # To ensure the same transformation is applied to img + mask
+            data = self.transform(image=original_image, mask=original_mask)
+            img = data['image']
+            mask = data['mask']
+            img = self.normalization(image=img)['image']
+        else:
+            img = self.normalization(image=original_image)['image']
+            mask = original_mask
         # convert to C, H, W
-        image = image.transpose(2, 0, 1)
+        image = img.transpose(2, 0, 1)
+        # image = img_to_tensor(img)
+        # mask = torch.from_numpy(mask)
+        # mask = remap_mask(mask, self.EXP)
+        # original_mask = torch.from_numpy( original_mask)
+        # original_mask = remap_mask(original_mask, self.EXP)
+        # original_mask = original_mask.cpu().numpy()
 
         return image, mask, original_image, original_mask
 
@@ -95,19 +105,21 @@ class SegmentationDataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
             self.train_dataset = ImageSegmentationDataset(images_dir=os.path.join(self.dataset_dir, 'train', 'images'),
-                                                          masks_dir=os.path.join(self.dataset_dir, 'train', 'labels'),
-                                                          transform=train_transform)
+                                                          masks_dir=os.path.join(self.dataset_dir, 'train', 'new_labels'),
+                                                          transform=train_transform,
+                                                          normalization=A.Normalize(mean=ADE_MEAN, std=ADE_STD)
+                                                          )
             # Add your transforms here
             self.val_dataset = ImageSegmentationDataset(images_dir=os.path.join(self.dataset_dir,  'val', 'images'),
-                                                        masks_dir=os.path.join(self.dataset_dir, 'val', 'labels'),
-                                                        transform=A.Normalize(mean=ADE_MEAN, std=ADE_STD)) # Add your transforms here
+                                                        masks_dir=os.path.join(self.dataset_dir, 'val', 'new_labels'),
+                                                        normalization=A.Normalize(mean=ADE_MEAN, std=ADE_STD)) # Add your transforms here
 
             print(f"{len(self.train_dataset)} training samples.")
             print(f"{len(self.val_dataset)} validation samples.")
         if stage == 'test' or stage is None:
             self.test_dataset = ImageSegmentationDataset(images_dir=os.path.join(self.dataset_dir, 'test', 'images'),
-                                                         masks_dir=os.path.join(self.dataset_dir, 'test', 'labels'),
-                                                         transform=A.Normalize(mean=ADE_MEAN, std=ADE_STD)) # Add your transforms here
+                                                         masks_dir=os.path.join(self.dataset_dir, 'test', 'new_labels'),
+                                                         normalization=A.Normalize(mean=ADE_MEAN, std=ADE_STD)) # Add your transforms here
             print(f"{len(self.test_dataset)} validation samples.")
 
     def train_dataloader(self):

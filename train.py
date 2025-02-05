@@ -87,8 +87,9 @@ def main():
             pbar.set_description(f"epoch: {epoch + 1}/{num_epochs}")
             sample, label = sample.to(device), label.to(device)
             optimizer.zero_grad()
+            if model_config["NAME"] == 'SegNext':
+                model.model.load_state_dict(torch.load('path_to_pretrained_model.pth'))
             train_pred = model(sample)
-            print("******pred: ", train_pred.shape)
             batch_loss = loss_cal(model_config['NAME'], train_pred, label,
                                   train_dataset.num_classes, train_config["IGNORE_LABEL"],
                                   device)
@@ -112,9 +113,6 @@ def main():
                 # print(f"Validation step: {val_step}")
                 sample, label = sample.to(device), label.to(device)
                 val_pred = model(sample)
-                print("Segmentation logits unique values:", torch.unique(val_pred.argmax(dim=1)))
-                print("Ground truth unique values:", torch.unique(label))
-
                 batch_loss = loss_cal(model_config['NAME'], val_pred, label,
                                       val_dataset.num_classes, train_config["IGNORE_LABEL"], device)
                 val_accuracy, val_skin_accuracy = accuracy(model_config['NAME'], val_pred,
