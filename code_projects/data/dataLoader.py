@@ -58,6 +58,8 @@ class Dataload():
                                       drop_last=True,
                                       pin_memory=True,
                                       num_workers=train_info["WORKERS"],
+                                      persistent_workers=True,
+                                      prefetch_factor=None
                                      )
 
         self.val_dataset = Dataset(root=root,
@@ -73,7 +75,9 @@ class Dataload():
                                     shuffle=False,
                                     drop_last=True,
                                     pin_memory=True,
-                                    num_workers=train_info["WORKERS"]
+                                    num_workers=train_info["WORKERS"],
+                                    persistent_workers=True,
+                                    prefetch_factor=None
                                     )
 
         self.test_dataset = Dataset(root=root,
