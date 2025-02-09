@@ -1,0 +1,33 @@
+#Training hyperparmeters
+
+MODEL:
+   PRETRAIN: "facebook/mask2former-swin-small-ade-semantic"
+TRAIN:
+   LR: 0.0001
+   PRECISION: 16-mixed
+   DEVICES: 1 #[2,3]
+   BATCH_SIZE: 5
+   WORKERS: 8
+   ID2LABEL:
+
+      0: "SKIN"
+      1: "Non_SKIN"
+   #   0: "BACKGROUND"
+   #   1: "SKIN"
+   #   2: "NOSE"
+   #   3: "RIGHT_EYE"
+   #   4: "LEFT_EYE"
+   #   5: "RIGHT_BROW"
+   #   6: "LEFT_BROW"
+   #   7: "RIGHT_EAR"
+   #   8: "LEFT_EAR"
+   #   9: "MOUTH_INTERIOR"
+   #   10: "TOP_LIP"
+   #   11: "BOTTOM_LIP"
+   #   12: "NECK"
+   #   13: "HAIR"
+   #   14: "BEARD"
+   #   15: "CLOTHING"
+   #   16: "GLASSES"
+   #   17: "HEADWEAR"
+

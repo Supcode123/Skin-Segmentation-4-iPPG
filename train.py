@@ -8,12 +8,12 @@ from tqdm import tqdm
 from code_projects.data.dataLoader import Dataload
 from code_projects.data.experiments import remap_label
 from models.Archi import model_select
-from code_projects.unitls.before_train import parse_train_args, get_train_info, \
+from code_projects.utils.before_train import parse_train_args, get_train_info, \
     create_optimizer, create_scheduler
-from code_projects.unitls.visualization_plot import create_fig, denormalize
-from code_projects.unitls.early_stopping import EarlyStopping
-from code_projects.unitls.score_cal import accuracy, loss_cal, miou_cal, Dice_cal
-from code_projects.unitls.csv_create import csv_file
+from code_projects.utils.visualization_plot import create_fig, denormalize
+from code_projects.utils.early_stopping import EarlyStopping
+from code_projects.utils.score_cal import accuracy, loss_cal, miou_cal, Dice_cal
+from code_projects.utils.csv_create import csv_file
 
 
 

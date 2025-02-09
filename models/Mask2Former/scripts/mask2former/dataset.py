@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 import numpy as np
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader 
-from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegmentation
+from transformers import Mask2FormerForUniversalSegmentation, AutoImageProcessor
 import albumentations as A
 
 from models.Mask2Former.scripts.mask2former.experiments import EXP
@@ -91,16 +91,12 @@ class ImageSegmentationDataset(Dataset):
 
 
 class SegmentationDataModule(pl.LightningDataModule):
-    def __init__(self, dataset_dir, model_conf, train_conf):
+    def __init__(self, dataset_dir, train_conf, model_conf):
         super().__init__()
         self.dataset_dir = dataset_dir
-        self.model_conf = model_conf
-        self.train_conf = train_conf
         self.batch_size = train_conf['BATCH_SIZE']
         self.num_workers = train_conf['WORKERS']
-        self.processor = Mask2FormerImageProcessor(ignore_index=255, do_resize=False,
-                                                   do_rescale=False, do_normalize=False,
-                                                   do_reduce_labels=False)
+        self.processor = AutoImageProcessor.from_pretrained(model_conf['PRETRAINED'])
     
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
@@ -125,7 +121,7 @@ class SegmentationDataModule(pl.LightningDataModule):
     def train_dataloader(self):
         train_loader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True,
                           num_workers=self.num_workers, drop_last=True, pin_memory=True,
-                          persistent_workers=False, prefetch_factor=None, collate_fn=self.collate_fn)
+                          persistent_workers=True, prefetch_factor=None, collate_fn=self.collate_fn)
         print(f"load train dataloader.")
         return train_loader
 
@@ -138,7 +134,7 @@ class SegmentationDataModule(pl.LightningDataModule):
     def test_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False,
                           num_workers=self.num_workers, drop_last=True, pin_memory=False,
-                          collate_fn=self.collate_fn)
+                          persistent_workers=False, collate_fn=self.collate_fn)
 
     def collate_fn(self,batch):
         inputs = list(zip(*batch))
@@ -162,8 +158,8 @@ class SegmentationDataModule(pl.LightningDataModule):
 #    print(args)
 #    output_dir, data_config, model_config, train_config = _config(args)
 #    data = SegmentationDataModule(dataset_dir=args.data_path, model_conf=model_config, train_conf=train_config)
-#    data.setup('fit')
-#    dataloader = data.train_dataloader()
+#    data.setup('test')
+#    dataloader = data.test_dataloader()
 #    #print(dataset)
 #    batch = next(iter(dataloader))
 #    for k, v in batch.items():

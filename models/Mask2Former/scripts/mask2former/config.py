@@ -21,6 +21,17 @@ def _args():
     args = parser.parse_args()
     return args
 
+def test_args():
+    """
+    Parse input arguments for test scripts
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', dest='data_path', help='path to dataset root', type=str)
+    parser.add_argument('--test_conf', dest='test_conf', help='path to the test config file', type=str)
+    parser.add_argument('--chkpt_path', dest='chkpt_path', help='path to model checkpoint DIR', type=str)
+
+    args = parser.parse_args()
+    return args
 
 def _config(args):
     cur_time = int(round(time.time() * 1000))

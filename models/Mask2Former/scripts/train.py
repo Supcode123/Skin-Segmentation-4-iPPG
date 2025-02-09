@@ -27,30 +27,16 @@ if __name__ == "__main__":
     output_dir, data_config, model_config, train_config = _config(args)
     # data_module = SegmentationDataModule(dataset_dir=DATASET_DIR, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
-    data_module = SegmentationDataModule(dataset_dir=args.data_path, model_conf=model_config, train_conf=train_config)
+    data_module = SegmentationDataModule(dataset_dir=args.data_path, train_conf=train_config,
+                                         model_conf=model_config)
 
-    # train_loader = data_module.train_dataloader()
-    # val_loader = data_module.val_dataloader()
-    #
-    # # 尝试从数据加载器获取第一个批次
-    # try:
-    #     first_batch = next(iter(train_loader))
-    #     print(f"First batch from train_dataloader: {first_batch}")
-    # except Exception as e:
-    #     print(f"Error fetching first batch from train_dataloader: {str(e)}")
-    #
-    # try:
-    #     first_batch = next(iter(val_loader))
-    #     print(f"First batch from val_dataloader: {first_batch}")
-    # except Exception as e:
-    #     print(f"Error fetching first batch from val_dataloader: {str(e)}")
 
     print("##### Load models ...###")
     model = Mask2FormerFinetuner(model_config, train_config, output_dir)
 
     # model=Mask2FormerFinetuner(ID2LABEL, LEARNING_RATE)
     Early_Stopping = EarlyStopping(
-                                   monitor="iou_SKIN",
+                                   monitor="mean_iou",
                                    patience=train_config['PATIENCE'],
                                    mode='max',
                                    verbose=True,
@@ -61,10 +47,9 @@ if __name__ == "__main__":
                                           dirpath=os.path.join(output_dir,"checkpoints/"),
                                           filename="epoch_{epoch:02d}-iou_SKIN_{iou_SKIN:.2f}",
                                           save_top_k=1,
-                                          monitor="iou_SKIN",
+                                          monitor="mean_iou",
                                           mode="max",
-                                          every_n_epochs=1,  # Save the model at every epoch
-                                          save_weights_only=True,
+                                           # Save the model at every epoch
                                           )
     LOGGER = TensorBoardLogger(save_dir=output_dir,
                                name="lightning_tensorboard",

@@ -95,9 +95,9 @@ class Dataload():
                                     )
 
     def get_dataloaders(self):
-        return self.train_dataset, self.train_dataloader, self.val_dataset, \
-               self.val_dataloader, self.test_dataset, self.test_dataloader
 
+       return self.train_dataset, self.train_dataloader, self.val_dataset, \
+           self.val_dataloader, self.test_dataset, self.test_dataloader
 
 # if __name__ == "__main__":
 #     data_path = "D:/sythetic_data/dataset_100/256,256"

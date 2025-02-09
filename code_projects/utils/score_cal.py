@@ -1,7 +1,8 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from torchmetrics.classification import MulticlassJaccardIndex, BinaryJaccardIndex
-
+from skimage import measure
 
 def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: int, device):
 
@@ -101,3 +102,21 @@ def Dice_cal(model_name, pred, gth: torch.Tensor, ignore_index: int, device, smo
     intersection = torch.sum(pred_skin * gth_skin * mask)
     dice = (2. * intersection + smooth) / (torch.sum(pred_skin * mask) + torch.sum(gth_skin * mask) + smooth)
     return dice
+
+
+def get_boundary_points_skimage(mask):
+    """
+    Extract border points from a binary mask using skimage.
+
+    Parameters:
+    - mask: (H, W) binary mask (0/1)
+
+    Returns:
+    - border_points: (N, 2) NumPy array with each row being (x, y) coordinates
+    """
+    contours = measure.find_contours(mask, 0.5)
+    if len(contours) == 0:
+        return np.array([])
+
+    boundary_points = np.vstack(contours)
+    return boundary_points[:, [1, 0]]

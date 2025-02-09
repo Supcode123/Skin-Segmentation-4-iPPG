@@ -3,7 +3,7 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 
-from code_projects.unitls.visualization_plot import create_fig
+from code_projects.utils.visualization_plot import create_fig
 
 torch.manual_seed(42)
 np.random.seed(42)

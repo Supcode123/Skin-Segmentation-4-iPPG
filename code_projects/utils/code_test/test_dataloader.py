@@ -1,4 +1,4 @@
-from code_projects.unitls.before_train import parse_train_args, get_train_info
+from code_projects.utils.before_train import parse_train_args, get_train_info
 from code_projects.data.dataLoader import Dataload
 
 args = parse_train_args()

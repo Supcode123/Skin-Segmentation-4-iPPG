@@ -1,9 +1,12 @@
 import os
+import time
+
+import pandas as pd
 import pytorch_lightning as pl
 import torch
 from torch.optim import AdamW
 from torchmetrics import MeanMetric
-from transformers import Mask2FormerForUniversalSegmentation
+from transformers import Mask2FormerForUniversalSegmentation, AutoImageProcessor
 from transformers import Mask2FormerImageProcessor
 from torch.optim.lr_scheduler import PolynomialLR
 import evaluate
@@ -13,7 +16,7 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
 class Mask2FormerFinetuner(pl.LightningModule):
 
-    def __init__(self, model_config, train_config, output_dir):
+    def __init__(self, model_config, train_config, output_dir=None):
         super(Mask2FormerFinetuner, self).__init__()
         self.train_loss_metric = MeanMetric(sync_on_compute=True)
         self.val_loss_metric = MeanMetric(sync_on_compute=True)
@@ -29,13 +32,13 @@ class Mask2FormerFinetuner(pl.LightningModule):
             id2label=self.id2label,
             ignore_mismatched_sizes=True,
         )
-        self.processor = Mask2FormerImageProcessor(ignore_index=255, do_resize=False,
-                                                   do_rescale=False, do_normalize=False,
-                                                   do_reduce_labels=True)
+        self.processor = AutoImageProcessor.from_pretrained(model_config['PRETRAINED'])
 
         self.metrics_cache = []
         self.validation_outputs = []
         self.metrics = evaluate.load("mean_iou")
+        self.test_iou_skin = []
+        self.test_dice_skin = []
 
     # def lr_lambda(self, epoch):
     #     return max(
@@ -65,17 +68,20 @@ class Mask2FormerFinetuner(pl.LightningModule):
             class_labels=batch["class_labels"],
         )
         loss = outputs.loss
+        lr = self.trainer.optimizers[0].param_groups[0]['lr']
+        self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
+                 batch_size=self.train_config['BATCHSIZE'], logger=True, prog_bar=True)
+        self.log("trainLoss", loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
+                 logger=True)
         self.train_loss_metric.update(loss.detach())
 
         return loss
 
     def on_train_epoch_end(self):
-        lr = self.trainer.optimizers[0].param_groups[0]['lr']
-        self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
-                 on_epoch=True, logger=True, prog_bar=True)
+
         avg_loss = self.train_loss_metric.compute()
-        self.log("trainLoss", avg_loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
-                 logger=True, prog_bar=True)
+
+        print(f"|train_epoch_loss: {avg_loss} |")
         self.train_loss_metric.reset()
 
 
@@ -87,17 +93,17 @@ class Mask2FormerFinetuner(pl.LightningModule):
         )
         loss = outputs.loss
         metrics = self.get_metrics(outputs, batch)
+        self.log("valLoss", loss, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCHSIZE'],
+                 logger=True)
         self.val_loss_metric.update(loss.detach())
         self.validation_outputs.append(metrics)
-        return {"valLoss": loss, "metrics": metrics}
+        return self.validation_outputs
 
     def on_validation_epoch_end(self):
         print(f"Running validation for epoch {self.current_epoch}")
         avg_loss = self.val_loss_metric.compute()
-        self.log("valLoss", avg_loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
-                 logger=True, prog_bar=True)
         self.val_loss_metric.reset()
-
+        print(f"|val_epoch_loss: {avg_loss} |")
         epoch_metrics = {"epoch": self.current_epoch + 1}
 
         all_metrics = {}
@@ -122,7 +128,8 @@ class Mask2FormerFinetuner(pl.LightningModule):
         # Log metrics and add them to epoch metrics
         for metric_name, metric_value in all_metrics.items():
             self.log(metric_name, metric_value, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
-                     logger=True, prog_bar=True)
+                     logger=True)
+            print(f"| {metric_name}: {metric_value} |" )
             epoch_metrics[metric_name] = metric_value
 
         if self.trainer.is_global_zero:
@@ -132,23 +139,51 @@ class Mask2FormerFinetuner(pl.LightningModule):
         self.validation_outputs.clear()
         print(f"##### epoch {self.current_epoch + 1} metrics saved #####")
 
+    def on_test_start(self) -> None:
+        self.start_time = time.time()
+        self.step_num = 0
     def test_step(self, batch, batch_idx):
         outputs = self(
             pixel_values=batch["pixel_values"],
             mask_labels=[labels for labels in batch["mask_labels"]],
             class_labels=[labels for labels in batch["class_labels"]],
         )
-        loss = outputs.loss
-        metrics = self.get_metrics(outputs, batch)
+        self.test_iou_skin, self.test_dice_skin = self.get_metrics(outputs, batch, mode='test')
+        self.step_num += 1
+        print(f"***********len(iou_list): {len(self.test_iou_skin)}, len(dice_list): {len(self.test_dice_skin)}")
+        return self.test_iou_skin, self.test_dice_skin
 
-        self.log("testLoss", loss, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCH_SIZE'],
-                 logger=True, prog_bar=True)
-        for k, v in metrics.items():
-            self.log(k, v, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCH_SIZE'],
-                     logger=True, prog_bar=True)
-        return metrics
+    def on_test_end(self):
+        mean_iou_skin = np.mean(self.test_iou_skin)
+        std_iou_skin = np.std(self.test_iou_skin)
+        mean_dice_skin = np.mean(self.test_dice_skin)
+        std_dice_skin = np.std(self.test_dice_skin)
+        inference_time =((time.time() - self.start_time) / ( self.step_num * self.train_config['BATCH_SIZE'])) * 1000
+        print("****  test end  ****")
 
-    def get_metrics(self,outputs, batch):
+        print(f"Mean IoU (Skin): {mean_iou_skin:.6f}")
+        print(f"Std IoU (Skin): {std_iou_skin:.6f}")
+        print(f"Mean Dice (Skin): {mean_dice_skin:.6f}")
+        print(f"Std Dice (Skin): {std_dice_skin:.6f}")
+        print(f"Inference Time (ms per sample): {inference_time:.6f}")
+
+        # 组织结果数据
+        results = {
+            "Mean IoU (Skin)": [mean_iou_skin],
+            "Std IoU (Skin)": [std_iou_skin],
+            "Mean Dice (Skin)": [mean_dice_skin],
+            "Std Dice (Skin)": [std_dice_skin],
+            "Inference Time (ms per sample)": [inference_time]
+        }
+        df = pd.DataFrame(results)
+        output_path = "test_results.csv"
+
+        if os.path.exists(output_path):
+            df.to_csv(output_path, mode='a', header=False, index=False)
+        else:
+            df.to_csv(output_path, mode='w', header=True, index=False)
+
+    def get_metrics(self,outputs, batch, mode=None):
         original_images = batch["original_images"]
         ground_truth = batch["original_segmentation_maps"]
         target_sizes = [(image.shape[0], image.shape[1]) for image in original_images]
@@ -164,7 +199,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
             predictions=predicted_segmentation_maps,
             references=ground_truth,
             num_labels=self.num_classes,
-            ignore_index=255,
+            ignore_index=254,
             reduce_labels=False,
         )
 
@@ -172,36 +207,48 @@ class Mask2FormerFinetuner(pl.LightningModule):
         # per_category_accuracy = metrics.pop("per_category_accuracy").tolist()
         per_category_iou = metrics.pop("per_category_iou").tolist()
         # dice
+        batch_dice_scores = {class_id: [] for class_id in range(len(self.id2label))}
         # Compute Skin Dice coefficients
         for pred_map, gt_map in zip(predicted_segmentation_maps, ground_truth):
-            # Convert predicted tensor to numpy and ensure it's a binary mask for the current class (class 1)
-            pred_class = (pred_map == 1).cpu().numpy()
-            gt_class = (gt_map == 1).astype(np.uint8)
-
+            # Convert predicted tensor to numpy
+            pred_class = pred_map.cpu().numpy()
+            gt_class = gt_map.astype(np.uint8)
+            for class_id in range(len(self.id2label)):
             # Ensure that we ignore class 255
-            pred_class = pred_class * (gt_map != 255)
-            gt_class = gt_class * (gt_map != 255).astype(np.uint8)
+                pred_bin = (pred_class == class_id).astype(np.uint8)
+                gt_bin = (gt_class == class_id).astype(np.uint8)
+                valid_mask = (gt_class != 254).astype(np.uint8)
+                pred_bin *= valid_mask
+                gt_bin *= valid_mask
+                intersection = np.sum(pred_bin * gt_bin)
+                union = np.sum(pred_bin) + np.sum(gt_bin)
+                dice = (2 * intersection) / (union + 1e-6) if union > 0 else 0.0
+                batch_dice_scores[class_id].append(dice)
+        mean_dice_scores = {class_id: np.mean(scores) for class_id, scores in batch_dice_scores.items() if scores}
 
-            intersection = np.sum(pred_class * gt_class)
-            union = np.sum(pred_class) + np.sum(gt_class)
+        if mode == "test":
+            self.test_iou_skin.append(per_category_iou[1])
+            self.test_dice_skin.append(dice)
+            self.log("iou_skin", per_category_iou[1],logger=True, prog_bar=True,
+                     batch_size=self.train_config['BATCHSIZE'])
+            self.log("dice_skin", dice, logger=True, prog_bar=True,
+                     batch_size=self.train_config['BATCHSIZE'])
+            return self.test_iou_skin, self.test_dice_skin
+        else:
+            # Re-define metrics dict to include per-category metrics
+            all_metrics = {
+                "mean_iou": metrics["mean_iou"],
+                "mean_accuracy": metrics["mean_accuracy"],
+                # "False Negative": percentage_fn,
+                # "False Positive": percentage_fp,
+                #**{f"accuracy_{self.id2label[i]}": v for i, v in enumerate(per_category_accuracy)},
+                **{f"iou_{self.id2label[1]}": v for i, v in enumerate(per_category_iou)},
+                **{f"Dice_{self.id2label[1]}": v for i, v in enumerate(mean_dice_scores)}
+            }
+            return all_metrics
 
-            dice = (2 * intersection) / (union + 1e-6) if union > 0 else 0.0
 
 
-        # per_category_dice = [2 * iou / (iou + 1) if iou + 1 > 0 else 0 for iou in per_category_iou]
-
-        # Re-define metrics dict to include per-category metrics
-        all_metrics = {
-            "mean_iou": metrics["mean_iou"],
-            "mean_accuracy": metrics["mean_accuracy"],
-            # "False Negative": percentage_fn,
-            # "False Positive": percentage_fp,
-            #**{f"accuracy_{self.id2label[i]}": v for i, v in enumerate(per_category_accuracy)},
-            **{f"iou_{self.id2label[1]}": per_category_iou[1]},
-            **{f"Dice_{self.id2label[1]}": dice}
-        }
-
-        return all_metrics
 
     def configure_optimizers(self):
         # AdamW optimizer with specified learning rate
