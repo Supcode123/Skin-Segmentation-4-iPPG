@@ -9,6 +9,7 @@ from torchmetrics import MeanMetric
 from transformers import Mask2FormerForUniversalSegmentation, AutoImageProcessor
 from transformers import Mask2FormerImageProcessor
 from torch.optim.lr_scheduler import PolynomialLR
+from torch.optim.lr_scheduler import LambdaLR
 import evaluate
 import json 
 import numpy as np
@@ -131,7 +132,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
         epoch_key = f"{self.current_epoch + 1} epoch"
         if epoch_key not in self.epoch_metrics:
             print(f"Warning: {epoch_key} not found in epoch_metrics, initializing...")
-            self.epoch_metrics[epoch_key] = {"val_loss": 0.0, "iou_Skin": 0.0, "dice_SKIN": 0.0}
+            self.epoch_metrics[epoch_key] = {"val_loss": 0.0, "iou_SKIN": 0.0, "dice_SKIN": 0.0}
 
         self.epoch_metrics[epoch_key].update({
             "val_loss": val_loss.item(),
@@ -241,14 +242,16 @@ class Mask2FormerFinetuner(pl.LightningModule):
             betas=(0.9, 0.999)
         )
 
-        num_devices = torch.cuda.device_count()
-        total_iters = (self.train_config['EPOCH'] * self.train_config['INTERVALS']) // num_devices
-        scheduler = {
-            'scheduler': PolynomialLR(optimizer, total_iters=total_iters,
-                                      power=self.train_config['POWER']),
-            "interval": "step",
-            "frequency": self.train_config['STEP'],
-        }
+        # num_devices = torch.cuda.device_count()
+        # total_iters = (self.train_config['EPOCH'] * self.train_config['INTERVALS']) // num_devices
+        scheduler = LambdaLR(optimizer, lr_lambda=self.lr_lambda)
+
+        # scheduler = {
+        #     'scheduler': PolynomialLR(optimizer, total_iters=total_iters,
+        #                               power=self.train_config['POWER']),
+        #     "interval": "step",
+        #     "frequency": self.train_config['STEP'],
+        # }
         # ReduceLROnPlateau scheduler
         # scheduler = {
         #     'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
@@ -260,5 +263,16 @@ class Mask2FormerFinetuner(pl.LightningModule):
 
         return {'optimizer': optimizer, 'lr_scheduler': scheduler}
 
+    def lr_lambda(self, step):
+        warmup_steps = 1500
+        total_steps = self.trainer.estimated_stepping_batches
+        power = self.train_config['POWER']
+        min_lr = self.train_config['MIN_LR']
+        lr = self.train_config['LR']
 
+        if step< warmup_steps:
+            return min_lr + (lr - min_lr) * (step + 1) / warmup_steps
+        else:
+            return max(
+                (1 - (step - warmup_steps) / (total_steps - warmup_steps)) ** power, min_lr)
 
