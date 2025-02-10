@@ -9,8 +9,6 @@ from torchmetrics import MeanMetric
 from transformers import Mask2FormerForUniversalSegmentation, AutoImageProcessor
 from transformers import Mask2FormerImageProcessor
 from torch.optim.lr_scheduler import PolynomialLR
-from torch.optim.lr_scheduler import LambdaLR
-import evaluate
 import json 
 import numpy as np
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
@@ -117,7 +115,10 @@ class Mask2FormerFinetuner(pl.LightningModule):
         # predict segmentation maps
         predicted_segmentation_maps = \
             self.processor.post_process_semantic_segmentation(outputs, target_sizes=target_sizes)  # list[tensor]
-        mean_iou, mean_dice = self.score(predicted_segmentation_maps, ground_truth)
+        if self.current_epoch != 0:
+            mean_iou = mean_dice = 0.0
+        else:
+            mean_iou, mean_dice = self.score(predicted_segmentation_maps, ground_truth)
         self.val_iou_metric.update(mean_iou)
         self.val_dice_metric.update(mean_dice)
         return loss
@@ -132,7 +133,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
         epoch_key = f"{self.current_epoch + 1} epoch"
         if epoch_key not in self.epoch_metrics:
             print(f"Warning: {epoch_key} not found in epoch_metrics, initializing...")
-            self.epoch_metrics[epoch_key] = {"val_loss": 0.0, "iou_SKIN": 0.0, "dice_SKIN": 0.0}
+            self.epoch_metrics[epoch_key] = {"val_loss": 0.0, "iou_Skin": 0.0, "dice_SKIN": 0.0}
 
         self.epoch_metrics[epoch_key].update({
             "val_loss": val_loss.item(),
@@ -210,13 +211,11 @@ class Mask2FormerFinetuner(pl.LightningModule):
         dice_list = []
         for i in range(len(pred)):
             device = pred[i].device
-            ground_truth = torch.from_numpy(ground_truth[i]).squeeze(1).to(device)
-            mask0 = (ground_truth != 254)
-            mask1 = (ground_truth != 255)
-            pred_0 = (pred[i] == 0) & mask0
-            true_count0 = torch.sum(pred_0).item()  # do_reduce_labels 1->0
-            gt_1 = (ground_truth == 1) & mask1
-            true_count1 = torch.sum(gt_1).item()  # Skin
+            gt = torch.from_numpy(ground_truth[i]).to(device)
+            mask0 = (pred != 254)
+            mask1 = (gt != 255)
+            pred_0 = (pred[i] == 0) & mask0  # do_reduce_labels 1->0
+            gt_1 = (gt == 1) & mask1 # Skin
             intersection = torch.sum(pred_0 & gt_1).float()
             union = torch.sum(pred_0 | gt_1).float()
             iou = intersection / (union + 1e-6)
@@ -242,16 +241,14 @@ class Mask2FormerFinetuner(pl.LightningModule):
             betas=(0.9, 0.999)
         )
 
-        # num_devices = torch.cuda.device_count()
-        # total_iters = (self.train_config['EPOCH'] * self.train_config['INTERVALS']) // num_devices
-        scheduler = LambdaLR(optimizer, lr_lambda=self.lr_lambda)
-
-        # scheduler = {
-        #     'scheduler': PolynomialLR(optimizer, total_iters=total_iters,
-        #                               power=self.train_config['POWER']),
-        #     "interval": "step",
-        #     "frequency": self.train_config['STEP'],
-        # }
+        num_devices = torch.cuda.device_count()
+        total_iters = (self.train_config['EPOCH'] * self.train_config['INTERVALS']) // num_devices
+        scheduler = {
+            'scheduler': PolynomialLR(optimizer, total_iters=total_iters,
+                                      power=self.train_config['POWER']),
+            "interval": "step",
+            "frequency": self.train_config['STEP'],
+        }
         # ReduceLROnPlateau scheduler
         # scheduler = {
         #     'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
@@ -263,16 +260,5 @@ class Mask2FormerFinetuner(pl.LightningModule):
 
         return {'optimizer': optimizer, 'lr_scheduler': scheduler}
 
-    def lr_lambda(self, step):
-        warmup_steps = 1500
-        total_steps = self.trainer.estimated_stepping_batches
-        power = self.train_config['POWER']
-        min_lr = self.train_config['MIN_LR']
-        lr = self.train_config['LR']
 
-        if step< warmup_steps:
-            return min_lr + (lr - min_lr) * (step + 1) / warmup_steps
-        else:
-            return max(
-                (1 - (step - warmup_steps) / (total_steps - warmup_steps)) ** power, min_lr)
 

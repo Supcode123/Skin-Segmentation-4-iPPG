@@ -1,7 +1,7 @@
 #Training hyperparmeters
 
 INTERVALS: 60 # 60/2
-EPOCH: 1 #180
+EPOCH: 2 #180
 PRECISION: 16-mixed
 DEVICES: 1 #[2,3]
 #lr Scheduler
