@@ -20,6 +20,9 @@ class Mask2FormerFinetuner(pl.LightningModule):
         super(Mask2FormerFinetuner, self).__init__()
         self.train_loss_metric = MeanMetric(sync_on_compute=True)
         self.val_loss_metric = MeanMetric(sync_on_compute=True)
+        # for multiple gpu synchronization
+        self.val_iou_metric = MeanMetric(sync_on_compute=True)
+        self.val_dice_metric = MeanMetric(sync_on_compute=True)
         self.model_config = model_config
         self.train_config = train_config
         self.output_dir = output_dir
@@ -32,11 +35,14 @@ class Mask2FormerFinetuner(pl.LightningModule):
             id2label=self.id2label,
             ignore_mismatched_sizes=True,
         )
-        self.processor = AutoImageProcessor.from_pretrained(model_config['PRETRAINED'])
+        self.processor = Mask2FormerImageProcessor(ignore_index=254, do_resize=False,
+                                                   do_rescale=False, do_normalize=True,
+                                                   do_reduce_labels=True)
 
-        self.metrics_cache = []
+        self.epoch_metrics = {}
         self.validation_outputs = []
-        self.metrics = evaluate.load("mean_iou")
+        self.val_iou_skin = []
+        self.val_dice_skin = []
         self.test_iou_skin = []
         self.test_dice_skin = []
 
@@ -56,9 +62,12 @@ class Mask2FormerFinetuner(pl.LightningModule):
 
     @rank_zero_only
     def on_train_end(self):
-
-        with open(os.path.join(self.output_dir, 'metrics.json'), 'w') as f:
-                json.dump(self.metrics_cache, f, indent=4)
+        file_path = os.path.join(self.output_dir, "metrics.json")
+        if not self.epoch_metrics:
+            print("Warning: No epoch metrics to save!")
+            return
+        with open(file_path, 'w') as f:
+            json.dump(self.epoch_metrics, f, indent=4)
         print("****  training end  ****")
 
     def training_step(self, batch, batch_idx):
@@ -70,19 +79,23 @@ class Mask2FormerFinetuner(pl.LightningModule):
         loss = outputs.loss
         lr = self.trainer.optimizers[0].param_groups[0]['lr']
         self.log("learning_rate", lr, sync_dist=self.trainer.num_devices > 1,
-                 batch_size=self.train_config['BATCHSIZE'], logger=True, prog_bar=True)
-        self.log("trainLoss", loss, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
-                 logger=True)
+                 batch_size=self.train_config['BATCH_SIZE'], logger=True, prog_bar=True)
+        self.log("trainLoss", loss, sync_dist=self.trainer.num_devices > 1,
+                 batch_size=self.train_config['BATCH_SIZE'],logger=True)
         self.train_loss_metric.update(loss.detach())
 
         return loss
 
     def on_train_epoch_end(self):
 
-        avg_loss = self.train_loss_metric.compute()
-
-        print(f"|train_epoch_loss: {avg_loss} |")
+        train_loss = self.train_loss_metric.compute()
         self.train_loss_metric.reset()
+        # print(f"|train_epoch_loss: {train_loss} |")
+        epoch_key = f"{self.current_epoch + 1} epoch"
+        self.epoch_metrics.setdefault(epoch_key, {})
+        self.epoch_metrics[epoch_key]["train_loss"] = train_loss.item()
+        return self.epoch_metrics
+
 
 
     def validation_step(self, batch, batch_idx):
@@ -92,51 +105,45 @@ class Mask2FormerFinetuner(pl.LightningModule):
             class_labels=[labels for labels in batch["class_labels"]],
         )
         loss = outputs.loss
-        metrics = self.get_metrics(outputs, batch)
-        self.log("valLoss", loss, sync_dist=self.trainer.num_devices > 1, batch_size=self.train_config['BATCHSIZE'],
-                 logger=True)
+        self.log("valLoss", loss, sync_dist=self.trainer.num_devices > 1,
+                 batch_size=self.train_config['BATCH_SIZE'], logger=True)
         self.val_loss_metric.update(loss.detach())
-        self.validation_outputs.append(metrics)
-        return self.validation_outputs
+
+        original_images = batch["original_images"]
+        ground_truth = batch["original_segmentation_maps"]  # list[array]
+        target_sizes = [(image.shape[0], image.shape[1]) for image in original_images]
+
+        # predict segmentation maps
+        predicted_segmentation_maps = \
+            self.processor.post_process_semantic_segmentation(outputs, target_sizes=target_sizes)  # list[tensor]
+        mean_iou, mean_dice = self.score(predicted_segmentation_maps, ground_truth)
+        self.val_iou_metric.update(mean_iou)
+        self.val_dice_metric.update(mean_dice)
+        return loss
 
     def on_validation_epoch_end(self):
         print(f"Running validation for epoch {self.current_epoch}")
-        avg_loss = self.val_loss_metric.compute()
+        val_loss = self.val_loss_metric.compute()
         self.val_loss_metric.reset()
-        print(f"|val_epoch_loss: {avg_loss} |")
-        epoch_metrics = {"epoch": self.current_epoch + 1}
+        mean_iou_skin = self.val_iou_metric.compute()
+        mean_dice_skin = self.val_dice_metric.compute()
 
-        all_metrics = {}
-        for output in self.validation_outputs:
-            for k, v in output.items():
-                if k not in all_metrics:
-                    all_metrics[k] = []
-                all_metrics[k].append(v)
+        epoch_key = f"{self.current_epoch + 1} epoch"
+        if epoch_key not in self.epoch_metrics:
+            print(f"Warning: {epoch_key} not found in epoch_metrics, initializing...")
+            self.epoch_metrics[epoch_key] = {"val_loss": 0.0, "iou_Skin": 0.0, "dice_SKIN": 0.0}
 
-        # Now average the metrics
-        for k, v_list in all_metrics.items():
-            if k != "trainLoss" and k != "valLoss" and k != "learning_rate":
-                if torch.distributed.is_available() and torch.distributed.is_initialized():
-                    # Synchronize the values across all GPUs
-                    v_list = torch.tensor(v_list).to(self.device)
-                    torch.distributed.all_reduce(v_list)
-                    all_metrics[k] = v_list.mean().item()
-                else:
-                    # If not using distributed, fall back to simple mean
-                    all_metrics[k] = np.mean(v_list)
+        self.epoch_metrics[epoch_key].update({
+            "val_loss": val_loss.item(),
+            f"iou_{self.id2label[0]}": mean_iou_skin.item(),  #
+            f"dice_{self.id2label[0]}": mean_dice_skin.item()
+        })
 
-        # Log metrics and add them to epoch metrics
-        for metric_name, metric_value in all_metrics.items():
-            self.log(metric_name, metric_value, sync_dist=self.trainer.num_devices > 1, on_epoch=True,
-                     logger=True)
-            print(f"| {metric_name}: {metric_value} |" )
-            epoch_metrics[metric_name] = metric_value
+        # log
+        for k, v in self.epoch_metrics[epoch_key].items():
+            self.log(k, v, sync_dist=self.trainer.num_devices > 1, on_epoch=True, logger=True)
+            print(f"| {k}: {v} |")
 
-        if self.trainer.is_global_zero:
-            if not hasattr(self, "metrics_cache"):
-                self.metrics_cache = []
-            self.metrics_cache.append(epoch_metrics)
-        self.validation_outputs.clear()
         print(f"##### epoch {self.current_epoch + 1} metrics saved #####")
 
     def on_test_start(self) -> None:
@@ -148,9 +155,23 @@ class Mask2FormerFinetuner(pl.LightningModule):
             mask_labels=[labels for labels in batch["mask_labels"]],
             class_labels=[labels for labels in batch["class_labels"]],
         )
-        self.test_iou_skin, self.test_dice_skin = self.get_metrics(outputs, batch, mode='test')
+        original_images = batch["original_images"]
+        ground_truth = batch["original_segmentation_maps"]  # list[array]
+        target_sizes = [(image.shape[0], image.shape[1]) for image in original_images]
+
+        # predict segmentation maps
+        predicted_segmentation_maps =\
+            self.processor.post_process_semantic_segmentation(outputs,target_sizes=target_sizes)  # list[tensor]
+        mean_iou, mean_dice = self.score(predicted_segmentation_maps, ground_truth)
         self.step_num += 1
-        print(f"***********len(iou_list): {len(self.test_iou_skin)}, len(dice_list): {len(self.test_dice_skin)}")
+        print(f"***********len(iou_list): {len(self.test_iou_skin)},"
+              f" len(dice_list): {len(self.test_dice_skin)}")
+        self.test_iou_skin.append(mean_iou)
+        self.test_dice_skin.append(mean_dice)
+        self.log("iou_skin", mean_iou, logger=True, prog_bar=True,
+                 batch_size=self.train_config['BATCH_SIZE'])
+        self.log("dice_skin", mean_dice, logger=True, prog_bar=True,
+                 batch_size=self.train_config['BATCH_SIZE'])
         return self.test_iou_skin, self.test_dice_skin
 
     def on_test_end(self):
@@ -183,71 +204,31 @@ class Mask2FormerFinetuner(pl.LightningModule):
         else:
             df.to_csv(output_path, mode='w', header=True, index=False)
 
-    def get_metrics(self,outputs, batch, mode=None):
-        original_images = batch["original_images"]
-        ground_truth = batch["original_segmentation_maps"]
-        target_sizes = [(image.shape[0], image.shape[1]) for image in original_images]
+    def score(self, pred, ground_truth):
+        ious = []
+        dice_list = []
+        for i in range(len(pred)):
+            device = pred[i].device
+            ground_truth = torch.from_numpy(ground_truth[i]).squeeze(1).to(device)
+            mask0 = (ground_truth != 254)
+            mask1 = (ground_truth != 255)
+            pred_0 = (pred[i] == 0) & mask0
+            true_count0 = torch.sum(pred_0).item()  # do_reduce_labels 1->0
+            gt_1 = (ground_truth == 1) & mask1
+            true_count1 = torch.sum(gt_1).item()  # Skin
+            intersection = torch.sum(pred_0 & gt_1).float()
+            union = torch.sum(pred_0 | gt_1).float()
+            iou = intersection / (union + 1e-6)
+            ious.append(iou)
 
-        # predict segmentation maps
-        predicted_segmentation_maps = self.processor.post_process_semantic_segmentation(outputs,
-                                                                                        target_sizes=target_sizes)
-        # print("Predicted Segmentation Maps Type:", len(predicted_segmentation_maps))
-        # print("Predicted Segmentation ", predicted_segmentation_maps[0].shape)
-        # print("Original Segmentation Maps Type:", type(ground_truth), "length: ", len(ground_truth))
-        # print("Original Segmentation ", type(ground_truth[0]))
-        metrics = self.metrics.compute(
-            predictions=predicted_segmentation_maps,
-            references=ground_truth,
-            num_labels=self.num_classes,
-            ignore_index=254,
-            reduce_labels=False,
-        )
+            # dice
+            # Compute Skin Dice coefficients
+            dice = (2 * intersection) / (union + 1e-6) if union > 0 else 0.0
+            dice_list.append(dice)
 
-        # Extract per-category metrics
-        # per_category_accuracy = metrics.pop("per_category_accuracy").tolist()
-        per_category_iou = metrics.pop("per_category_iou").tolist()
-        # dice
-        batch_dice_scores = {class_id: [] for class_id in range(len(self.id2label))}
-        # Compute Skin Dice coefficients
-        for pred_map, gt_map in zip(predicted_segmentation_maps, ground_truth):
-            # Convert predicted tensor to numpy
-            pred_class = pred_map.cpu().numpy()
-            gt_class = gt_map.astype(np.uint8)
-            for class_id in range(len(self.id2label)):
-            # Ensure that we ignore class 255
-                pred_bin = (pred_class == class_id).astype(np.uint8)
-                gt_bin = (gt_class == class_id).astype(np.uint8)
-                valid_mask = (gt_class != 254).astype(np.uint8)
-                pred_bin *= valid_mask
-                gt_bin *= valid_mask
-                intersection = np.sum(pred_bin * gt_bin)
-                union = np.sum(pred_bin) + np.sum(gt_bin)
-                dice = (2 * intersection) / (union + 1e-6) if union > 0 else 0.0
-                batch_dice_scores[class_id].append(dice)
-        mean_dice_scores = {class_id: np.mean(scores) for class_id, scores in batch_dice_scores.items() if scores}
-
-        if mode == "test":
-            self.test_iou_skin.append(per_category_iou[1])
-            self.test_dice_skin.append(dice)
-            self.log("iou_skin", per_category_iou[1],logger=True, prog_bar=True,
-                     batch_size=self.train_config['BATCHSIZE'])
-            self.log("dice_skin", dice, logger=True, prog_bar=True,
-                     batch_size=self.train_config['BATCHSIZE'])
-            return self.test_iou_skin, self.test_dice_skin
-        else:
-            # Re-define metrics dict to include per-category metrics
-            all_metrics = {
-                "mean_iou": metrics["mean_iou"],
-                "mean_accuracy": metrics["mean_accuracy"],
-                # "False Negative": percentage_fn,
-                # "False Positive": percentage_fp,
-                #**{f"accuracy_{self.id2label[i]}": v for i, v in enumerate(per_category_accuracy)},
-                **{f"iou_{self.id2label[1]}": v for i, v in enumerate(per_category_iou)},
-                **{f"Dice_{self.id2label[1]}": v for i, v in enumerate(mean_dice_scores)}
-            }
-            return all_metrics
-
-
+        mean_iou = torch.mean(torch.tensor(ious)).item()
+        mean_dice = torch.mean(torch.tensor(dice_list)).item()
+        return mean_iou, mean_dice
 
 
     def configure_optimizers(self):

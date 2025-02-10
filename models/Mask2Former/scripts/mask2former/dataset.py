@@ -7,15 +7,13 @@ from torch.utils.data import Dataset
 import numpy as np
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader 
-from transformers import Mask2FormerForUniversalSegmentation, AutoImageProcessor
+from transformers import Mask2FormerImageProcessor, Mask2FormerForUniversalSegmentation
 import albumentations as A
 
 from models.Mask2Former.scripts.mask2former.experiments import EXP
 from models.Mask2Former.scripts.mask2former.config import _args, _config
 
 
-ADE_MEAN = [0.485, 0.456, 0.406]
-ADE_STD = [0.229, 0.224, 0.225]
 
 train_transform = A.Compose([
     A.HorizontalFlip(p=0.5),
@@ -53,7 +51,7 @@ train_transform = A.Compose([
 #     return remap_mask_tensor
 
 class ImageSegmentationDataset(Dataset):
-    def __init__(self, images_dir, masks_dir, normalization, transform=None ):
+    def __init__(self, images_dir, masks_dir, normalization=None, transform=None ):
         self.images_dir = images_dir
         self.masks_dir = masks_dir
         self.transform = transform
@@ -74,18 +72,14 @@ class ImageSegmentationDataset(Dataset):
             data = self.transform(image=original_image, mask=original_mask)
             img = data['image']
             mask = data['mask']
-            img = self.normalization(image=img)['image']
+            #img = self.normalization(image=img)['image']
         else:
-            img = self.normalization(image=original_image)['image']
+            #img = self.normalization(image=original_image)['image']
+            img = original_image
             mask = original_mask
         # convert to C, H, W
         image = img.transpose(2, 0, 1)
-        # image = img_to_tensor(img)
-        # mask = torch.from_numpy(mask)
-        # mask = remap_mask(mask, self.EXP)
-        # original_mask = torch.from_numpy( original_mask)
-        # original_mask = remap_mask(original_mask, self.EXP)
-        # original_mask = original_mask.cpu().numpy()
+
 
         return image, mask, original_image, original_mask
 
@@ -96,32 +90,33 @@ class SegmentationDataModule(pl.LightningDataModule):
         self.dataset_dir = dataset_dir
         self.batch_size = train_conf['BATCH_SIZE']
         self.num_workers = train_conf['WORKERS']
-        self.processor = AutoImageProcessor.from_pretrained(model_conf['PRETRAINED'])
+        self.processor = Mask2FormerImageProcessor(ignore_index=254, do_resize=False,
+                                                   do_rescale=False, do_normalize=True,
+                                                   do_reduce_labels=True)
     
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
             self.train_dataset = ImageSegmentationDataset(images_dir=os.path.join(self.dataset_dir, 'train', 'images'),
                                                           masks_dir=os.path.join(self.dataset_dir, 'train', 'new_labels'),
                                                           transform=train_transform,
-                                                          normalization=A.Normalize(mean=ADE_MEAN, std=ADE_STD)
                                                           )
             # Add your transforms here
             self.val_dataset = ImageSegmentationDataset(images_dir=os.path.join(self.dataset_dir,  'val', 'images'),
                                                         masks_dir=os.path.join(self.dataset_dir, 'val', 'new_labels'),
-                                                        normalization=A.Normalize(mean=ADE_MEAN, std=ADE_STD)) # Add your transforms here
+                                                        ) # Add your transforms here
 
             print(f"{len(self.train_dataset)} training samples.")
             print(f"{len(self.val_dataset)} validation samples.")
         if stage == 'test' or stage is None:
             self.test_dataset = ImageSegmentationDataset(images_dir=os.path.join(self.dataset_dir, 'test', 'images'),
                                                          masks_dir=os.path.join(self.dataset_dir, 'test', 'new_labels'),
-                                                         normalization=A.Normalize(mean=ADE_MEAN, std=ADE_STD)) # Add your transforms here
+) # Add your transforms here
             print(f"{len(self.test_dataset)} validation samples.")
 
     def train_dataloader(self):
         train_loader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True,
                           num_workers=self.num_workers, drop_last=True, pin_memory=True,
-                          persistent_workers=True, prefetch_factor=None, collate_fn=self.collate_fn)
+                          persistent_workers=False, prefetch_factor=None, collate_fn=self.collate_fn)
         print(f"load train dataloader.")
         return train_loader
 
