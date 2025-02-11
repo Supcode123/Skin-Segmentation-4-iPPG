@@ -40,11 +40,11 @@ def main():
 
     print("##### Load data")
 
-    _, _, _, _, test_dataset, test_dataloader = Dataload(
+    test_dataset, test_dataloader = Dataload(
         root=args.data_path,
         train_info=train_info,
-        data_info=data_info
-    ).get_dataloaders()
+        data_info=data_info,
+    ).get_test_dataloaders()
 
     print("##### Load model etc.")
 

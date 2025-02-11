@@ -27,7 +27,7 @@ def main():
 
     print("##### Load data ... #####")
 
-    train_dataset, train_dataloader, val_dataset, val_dataloader, _, _ = Dataload(
+    train_dataset, train_dataloader, val_dataset, val_dataloader = Dataload(
         root=args.data_path,
         train_info=train_config,
         data_info=data_config).get_dataloaders()
