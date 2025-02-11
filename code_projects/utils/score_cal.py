@@ -8,7 +8,7 @@ def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
 
     mask = (gth != ignore_index).float().to(device)
     total_pixels = mask.sum().float()
-    if classes == 18:
+    if classes > 2:
         output = torch.softmax(pred, dim=1)  # [batch_size, num_classes, H, W]
         # count the number of correctly classified pixels
         correct_pixels = ((output.argmax(1) == gth) * mask).sum().float()
@@ -25,7 +25,7 @@ def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
         correct_skin_pixels = (correct_pred_skin * mask).sum().float()
         acc_skin = correct_skin_pixels / total_skin
 
-    elif classes == 2:
+    else:
         if model_name == "EfficientNetb0_UNet3Plus":
            pred = pred[0]
         output = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
@@ -34,18 +34,16 @@ def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
         total_skin = ((gth == 1) * mask).sum().float()
         correct_skin_pixels = ((output == gth) * (gth == 1) * mask).sum().float()
         acc_skin = correct_skin_pixels / total_skin
-    else:
-        raise ValueError
 
     return acc, acc_skin
 
 
 def loss_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, device):
 
-    if classes == 18:
+    if classes > 2:
         criterion = nn.CrossEntropyLoss(ignore_index=ignore)
         score = criterion(pred, gth)
-    elif classes == 2:
+    else:
         criterion = nn.BCEWithLogitsLoss(reduction='none')
         score = torch.tensor(0.0, dtype=torch.float32).to(device)
         if model_name == "EfficientNetb0_UNet3Plus":
@@ -64,24 +62,22 @@ def loss_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, dev
             mask = (gth != ignore).float()
             valid_loss = loss * mask
             score = valid_loss.sum() / mask.sum()
-    else:
-        raise ValueError
 
     return score
 
 
 def miou_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, device):
 
-    miou = torch.tensor(0.0, dtype=torch.float32).to(device)
-    skin_miou = torch.tensor(0.0, dtype=torch.float32).to(device)
+    # miou = torch.tensor(0.0, dtype=torch.float32).to(device)
+    # skin_miou = torch.tensor(0.0, dtype=torch.float32).to(device)
 
-    if classes == 18:
+    if classes > 2:
        class_miou = MulticlassJaccardIndex(num_classes=classes, ignore_index=ignore, average='none').to(device)
        miou = class_miou(pred, gth)
        skin_miou = (miou[1]+miou[2])/2
        miou = miou.mean()
 
-    if classes == 2:
+    else:
        if model_name == "EfficientNetb0_UNet3Plus":
             pred = pred[0]
        binary_miou = BinaryJaccardIndex(ignore_index=ignore).to(device)

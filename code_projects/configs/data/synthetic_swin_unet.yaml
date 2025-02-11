@@ -4,3 +4,6 @@ IMG_SIZE: (3, 224, 224)
 MEAN: [123.675, 116.28, 103.53]
 STD: [58.395, 57.12, 57.375]
 CLASSES: 2
+EXP: EXP2  # -dataset with 2 labels,
+   # EXP_  -CelebAMask-HQ dataset with 19 labels,
+   # EXP1  -synthetic dataset with 2 labels,

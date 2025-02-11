@@ -5,7 +5,7 @@ import numpy as np
 from albumentations.pytorch.functional import img_to_tensor
 from PIL import Image
 
-from code_projects.data.experiments import EXP1,EXP2
+from code_projects.data.experiments import EXP1,EXP2,EXP_
 
 
 def remap_mask(mask: torch.Tensor, exp_dict: dict, ignore_label: int = 255) -> torch.Tensor:
@@ -23,10 +23,10 @@ def remap_mask(mask: torch.Tensor, exp_dict: dict, ignore_label: int = 255) -> t
 class Dataset(data.Dataset):
     def __init__(self,
                  root: str,
-                 classes: int,
+                 # classes: int,
                  transform=None,
                  img_normalization=None,
-                 #exp:
+                 exp: str = "EXP2",
                  mode: str = "train",
                  filter_mislabeled: bool = False):
 
@@ -40,11 +40,13 @@ class Dataset(data.Dataset):
         assert os.path.isdir(root)
         self.sample_list = []
         self.mode = mode
-        self.num_classes = classes
-        if classes == 18 :
+        #self.num_classes = classes
+        if exp == "EXP1": # synthetic dataset with 18 labels
            self.EXP = EXP1
-        elif classes == 2 :
+        elif exp == "EXP2": # synthetic dataset with 2 labels
            self.EXP = EXP2
+        elif exp == "EXP_": # CelebAMask-HQ dataset with 2 labels
+           self.EXP = EXP_
         self.normalization = img_normalization
         self.transform = transform
         self.filter_mislabeled = filter_mislabeled

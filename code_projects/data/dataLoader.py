@@ -14,7 +14,7 @@ class Dataload():
         self.train_info = train_info
         self.data_info = data_info
         self.train_dataset = Dataset(root=root,
-                                classes=data_info['CLASSES'],
+                                exp=data_info['EXP'],
                                 transform=A.Compose([
                                     # for SwinTransformer Windowsize, synthetic dataset
                                     # A.RandomCrop(width=224, height=224),
@@ -63,7 +63,7 @@ class Dataload():
                                      )
 
         self.val_dataset = Dataset(root=root,
-                              classes=data_info['CLASSES'],
+                              exp=data_info['EXP'],
                               # transform= None,
                               # transform=A.CenterCrop(width=224, height=224), # for Swin_Unet, synthetic dataset
                               img_normalization=A.Normalize(mean=data_info['MEAN'], std=data_info['STD']),
@@ -81,7 +81,7 @@ class Dataload():
                                     )
 
         self.test_dataset = Dataset(root=root,
-                               classes=data_info['CLASSES'],
+                               exp=data_info['EXP'],
                                transform=None,
                                img_normalization=A.Normalize(mean=data_info['MEAN'], std=data_info['STD']),
                                mode='test',

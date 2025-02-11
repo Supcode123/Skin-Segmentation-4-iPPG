@@ -115,10 +115,7 @@ class Mask2FormerFinetuner(pl.LightningModule):
         # predict segmentation maps
         predicted_segmentation_maps = \
             self.processor.post_process_semantic_segmentation(outputs, target_sizes=target_sizes)  # list[tensor]
-        if self.current_epoch != 0:
-            mean_iou = mean_dice = 0.0
-        else:
-            mean_iou, mean_dice = self.score(predicted_segmentation_maps, ground_truth)
+        mean_iou, mean_dice = self.score(predicted_segmentation_maps, ground_truth)
         self.val_iou_metric.update(mean_iou)
         self.val_dice_metric.update(mean_dice)
         return loss
@@ -132,12 +129,12 @@ class Mask2FormerFinetuner(pl.LightningModule):
 
         epoch_key = f"{self.current_epoch + 1} epoch"
         if epoch_key not in self.epoch_metrics:
-            print(f"Warning: {epoch_key} not found in epoch_metrics, initializing...")
-            self.epoch_metrics[epoch_key] = {"val_loss": 0.0, "iou_Skin": 0.0, "dice_SKIN": 0.0}
+            print(f"Warning: {epoch_key} not found in epoch_metrics")
+            self.epoch_metrics[epoch_key] = {}
 
         self.epoch_metrics[epoch_key].update({
             "val_loss": val_loss.item(),
-            f"iou_{self.id2label[0]}": mean_iou_skin.item(),  #
+            f"iou_{self.id2label[0]}": mean_iou_skin.item(),
             f"dice_{self.id2label[0]}": mean_dice_skin.item()
         })
 
@@ -210,20 +207,25 @@ class Mask2FormerFinetuner(pl.LightningModule):
         ious = []
         dice_list = []
         for i in range(len(pred)):
-            device = pred[i].device
-            gt = torch.from_numpy(ground_truth[i]).to(device)
-            mask0 = (pred != 254)
+            gt = torch.tensor(ground_truth[i], device=pred[i].device)
+            mask0 = (pred[i] != 254)
+            # q = torch.sum(mask0).float()
+            # h = gt
             mask1 = (gt != 255)
+            # e = torch.sum(mask1).float()
+            print(f"pred[{i}] label: ", torch.unique(pred[i]))
             pred_0 = (pred[i] == 0) & mask0  # do_reduce_labels 1->0
+            # x = torch.sum(pred_0).float()
             gt_1 = (gt == 1) & mask1 # Skin
+            # y = torch.sum(gt_1).float()
             intersection = torch.sum(pred_0 & gt_1).float()
-            union = torch.sum(pred_0 | gt_1).float()
-            iou = intersection / (union + 1e-6)
+            union = torch.sum(pred_0).float() + torch.sum(gt_1).float()
+            iou = intersection / (union - intersection + 1e-6)
             ious.append(iou)
 
             # dice
             # Compute Skin Dice coefficients
-            dice = (2 * intersection) / (union + 1e-6) if union > 0 else 0.0
+            dice = (2 * intersection) / (union + 1e-6)
             dice_list.append(dice)
 
         mean_iou = torch.mean(torch.tensor(ious)).item()

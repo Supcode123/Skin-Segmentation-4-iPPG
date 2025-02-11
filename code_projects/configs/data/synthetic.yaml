@@ -4,5 +4,8 @@ IMG_SIZE: (3, 256, 256)
 ## for pretrained model on imagenet
 MEAN: [0.485, 0.456, 0.406]
 STD: [0.229, 0.224, 0.225]
+EXP: EXP2  # -dataset with 2 labels,
+   # EXP_  -CelebAMask-HQ dataset with 19 labels,
+   # EXP1  -synthetic dataset with 2 labels,
 
 CLASSES: 2

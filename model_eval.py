@@ -12,7 +12,7 @@ from code_projects.data.dataLoader import Dataload
 from models.Archi import model_select
 from code_projects.utils.before_train import parse_eval_args, create_logger
 from code_projects.utils.visualization_plot import create_fig_test, create_fig, denormalize
-from utils.score_cal import miou_cal, Dice_cal
+from code_projects.utils.score_cal import miou_cal, Dice_cal
 
 
 def main():
