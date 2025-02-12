@@ -63,7 +63,7 @@ def main():
         for i, (sample, label, name) in enumerate(pbar,start=1):
             sample, label = sample.to(args.device), label.to(args.device)
             pred = model(sample)
-            iou_score, _ = miou_cal(model_info["NAME"], pred, label, test_dataset.num_classes, 255, args.device)
+            iou_score, _ = miou_cal(model_info["NAME"], pred, label, data_info['CLASSES'], 255, args.device)
             iou.append(iou_score.item())
             dice_score = Dice_cal(model_info['NAME'], pred, label, 255, args.device)
             dice.append(dice_score.item())
@@ -83,6 +83,7 @@ def main():
         #sorted_ious = sorted(iou, key=lambda x: x[0], reverse=True)
         # random.seed(42)
         # samples = random.sample(results, 8)
+
         #
         # save_path = os.path.join(args.chkpt_path, "eval")
         # os.makedirs(save_path, exist_ok=True)
@@ -91,7 +92,7 @@ def main():
         # fig = create_fig(pred[:4, ...],
         #                  label[:4, ...],
         #                  denormalize(sample[:4, ...], [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        #                  test_dataset.num_classes,
+        #                  data_info['CLASSES'],
         #                  prob[:4, ...])
 
 
