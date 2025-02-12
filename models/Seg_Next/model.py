@@ -1,5 +1,5 @@
 
-from mmseg.models import MSCAN, LightHamHead
+from mmseg.models import EncoderDecoder
 from mmseg.models.utils.wrappers import resize
 
 from torch import nn
@@ -10,28 +10,14 @@ class seg_next(nn.Module):
       def __init__(self, model_config):
           super(seg_next, self).__init__()
           self.model_config = model_config
-          self.backbone = MSCAN(
-                                embed_dims=model_config['BACKBONE']["embed_dims"],
-                                mlp_ratios=model_config['BACKBONE']["mlp_ratios"],
-                                drop_path_rate=model_config['BACKBONE']['drop_path_rate'],
-                                depths=model_config['BACKBONE']["depths"],
-                                norm_cfg=model_config['BACKBONE']['norm_cfg'],
-                                init_cfg=model_config['BACKBONE']['init_cfg'], # pretrain
-                                )
-          self.decoder = LightHamHead(
-                                num_classes=model_config['DECODER_HEAD']['num_classes'],
-                                channels=model_config['DECODER_HEAD']['channels'],
-                                ham_channels=model_config['DECODER_HEAD']['ham_channels'],
-                                ham_kwargs=model_config['DECODER_HEAD']['ham_kwargs'],
-                                in_channels=model_config['DECODER_HEAD']['in_channels'],
-                                in_index=model_config['DECODER_HEAD']['in_index'],
-                                norm_cfg=model_config['DECODER_HEAD']['norm_cfg']
-          )
+
+          self.model = EncoderDecoder(backbone=model_config['BACKBONE'],
+                                      decode_head=model_config['DECODER_HEAD'],
+                                      init_cfg=model_config['init_cfg']
+                                        )
 
       def forward(self, x):
-          feature = self.backbone(x)
-          # feature = feature[0]
-          output = self.decoder(feature)
+          output = self.model(x)
           output = resize(
               input=output,
               size=(256,256),

@@ -136,7 +136,7 @@ class SegmentationDataModule(pl.LightningDataModule):
         images=inputs[0]
         segmentation_maps=inputs[1]
         batch = self.processor(
-            images,
+            images=images,
             segmentation_maps=segmentation_maps,
             size=(256,256),
             return_tensors="pt",

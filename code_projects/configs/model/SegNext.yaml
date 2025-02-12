@@ -1,7 +1,6 @@
 NAME: SegNext
 
 BACKBONE:
-
   depths:
     - 3
     - 5
@@ -13,9 +12,6 @@ BACKBONE:
     - 128
     - 320
     - 512
-  init_cfg:
-    checkpoint: 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segnext/mscan_l_20230227-cef260d4.pth'
-    type: 'Pretrained'
   mlp_ratios:
     - 8
     - 8
@@ -23,7 +19,7 @@ BACKBONE:
     - 4
   norm_cfg:
     requires_grad: true
-    type: 'BN'
+    type: BN
 
 
 DECODER_HEAD:
@@ -49,9 +45,11 @@ DECODER_HEAD:
   norm_cfg:
     num_groups: 32
     requires_grad: true
-    type: 'GN'
-  num_classes: 1
+    type: GN
+  num_classes: 2
 
-
-
+init_cfg:
+  checkpoint:
+        https://download.openmmlab.com/mmsegmentation/v0.5/segnext/segnext_mscan-l_1x16_512x512_adamw_160k_ade20k/segnext_mscan-l_1x16_512x512_adamw_160k_ade20k_20230209_172055-19b14b63.pth
+  type: pretrained
 

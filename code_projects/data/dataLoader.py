@@ -1,4 +1,5 @@
 import albumentations as A
+import cv2
 from torch.utils.data import DataLoader
 
 from code_projects.data.dataset_class import Dataset
@@ -28,7 +29,7 @@ class Dataload():
                                              shift_limit=0.1,
                                              scale_limit=0.2,
                                              rotate_limit=30,
-                                             border_mode=0,
+                                             border_mode=cv2.BORDER_REFLECT_101,
                                              p=0.8  # 执行的概率
                                          ),
                                          # Randomly adjust brightness and contrast
@@ -46,7 +47,7 @@ class Dataload():
                                              p=0.8),
                                          # Randomly apply Gaussian noise (to simulate ambient light interference)
                                          A.GaussNoise(
-                                             var_limit=50.0,
+                                             var_limit=(10.0, 30.0),
                                              p=0.3),
                                      ]),
                                      img_normalization=A.Normalize(mean=self.data_info['MEAN'],

@@ -32,7 +32,7 @@ if __name__=="__main__":
                                          model_conf=model_info)
 
     print("##### Load models ...###")
-    file_path = os.path.join(args.chkpt_path, "epoch_epoch=186-iou_SKIN_iou_SKIN=0.94.ckpt")
+    file_path = os.path.join(args.chkpt_path, "epoch_epoch=07-iou_SKIN_iou_SKIN=0.87.ckpt")
     checkpoint = torch.load(file_path)
     model = Mask2FormerFinetuner(model_info, train_info)
     model.load_state_dict(checkpoint['state_dict'])
