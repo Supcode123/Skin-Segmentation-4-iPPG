@@ -20,7 +20,8 @@ BACKBONE:
   norm_cfg:
     requires_grad: true
     type: BN
-
+  type:
+    MSCAN
 
 DECODER_HEAD:
 
@@ -46,7 +47,9 @@ DECODER_HEAD:
     num_groups: 32
     requires_grad: true
     type: GN
-  num_classes: 2
+  num_classes: 1
+  type:
+    LightHamHead
 
 init_cfg:
   checkpoint:

@@ -89,13 +89,13 @@ def main():
             optimizer.zero_grad()
             train_pred = model(sample)
             batch_loss = loss_cal(model_config['NAME'], train_pred, label,
-                                  train_dataset.num_classes, train_config["IGNORE_LABEL"],
+                                  data_config['CLASSES'], train_config["IGNORE_LABEL"],
                                   device)
             batch_loss.backward()
             optimizer.step()
             with torch.no_grad():
                 train_accuracy, _ = accuracy(model_config['NAME'], train_pred, label,
-                                             train_dataset.num_classes, 255, device)
+                                             data_config['CLASSES'], 255, device)
                 train_acc += train_accuracy.item()
             train_loss += batch_loss.item()
 
@@ -112,15 +112,15 @@ def main():
                 sample, label = sample.to(device), label.to(device)
                 val_pred = model(sample)
                 batch_loss = loss_cal(model_config['NAME'], val_pred, label,
-                                      val_dataset.num_classes, train_config["IGNORE_LABEL"], device)
+                                      data_config['CLASSES'], train_config["IGNORE_LABEL"], device)
                 val_accuracy, val_skin_accuracy = accuracy(model_config['NAME'], val_pred,
-                                                           label, val_dataset.num_classes, 255, device)
+                                                           label, data_config['CLASSES'], 255, device)
                 val_acc += val_accuracy.item()
                 val_skin_acc += val_skin_accuracy.item()
                 val_loss += batch_loss.item()
                 miou_score, skin_miou = miou_cal(model_config['NAME'], val_pred,
-                                                 label, val_dataset.num_classes, 255, device)
-                if val_dataset.num_classes == 2:
+                                                 label, data_config['CLASSES'], 255, device)
+                if data_config['CLASSES'] == 2:
                     dice = Dice_cal(model_config['NAME'], val_pred, label, 255, device)
                     val_dice += dice.item()
                 val_miou += miou_score.item()
@@ -163,9 +163,9 @@ def main():
                 print(f"save models at {epoch+1} epoch: done!")
 
                 # Make example plot
-                if val_dataset.num_classes == 18:
+                if data_config['CLASSES'] > 2:
                     val_pred = torch.argmax(val_pred, dim=1)
-                if val_dataset.num_classes == 2:
+                if data_config['CLASSES'] == 2:
                     if model_config['NAME'] == "EfficientNetb0_UNet3Plus":
                         val_pred = val_pred[0]
                     val_pred = (torch.sigmoid(val_pred) > 0.5).int().squeeze(1)

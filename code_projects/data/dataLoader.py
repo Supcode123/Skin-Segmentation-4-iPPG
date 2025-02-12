@@ -62,7 +62,7 @@ class Dataload():
                                            drop_last=True,
                                            pin_memory=True,
                                            num_workers=self.train_info["WORKERS"],
-                                           prefetch_factor=None
+                                           #prefetch_factor=None
                                            )
 
         self.val_dataset = Dataset(root=self.root,
@@ -80,7 +80,7 @@ class Dataload():
                                          drop_last=False,
                                          pin_memory=True,
                                          num_workers=self.train_info["WORKERS"],
-                                         prefetch_factor=None
+                                         #prefetch_factor=None
                                          )
 
         return self.train_dataset, self.train_dataloader, self.val_dataset, self.val_dataloader
