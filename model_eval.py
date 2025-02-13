@@ -1,8 +1,6 @@
 import os
 import shutil
 import random
-import time
-
 import numpy as np
 import yaml
 import torch
@@ -57,12 +55,27 @@ def main():
     results = []
     iou = []
     dice = []
-    start_time = time.time()
+    fps_list = []
+    start_event = torch.cuda.Event(enable_timing=True)
+    end_event = torch.cuda.Event(enable_timing=True)
     with torch.no_grad():
+
         pbar = tqdm(test_dataloader)
         for i, (sample, label, name) in enumerate(pbar,start=1):
             sample, label = sample.to(args.device), label.to(args.device)
+
+            torch.cuda.synchronize()  # record inference time
+            start_event.record()
+
             pred = model(sample)
+
+            end_event.record()
+            torch.cuda.synchronize()
+
+            inference_time = start_event.elapsed_time(end_event) / 1000
+            fps = train_info['BATCH_SIZE']/ inference_time
+            fps_list.append(fps)
+
             iou_score, _ = miou_cal(model_info["NAME"], pred, label, data_info['CLASSES'], 255, args.device)
             iou.append(iou_score.item())
             dice_score = Dice_cal(model_info['NAME'], pred, label, 255, args.device)
@@ -74,10 +87,9 @@ def main():
         iou_std = np.std(iou)
         mdice=np.mean(dice)
         dice_std = np.std(dice)
-        end_time = time.time()
-        message = 'Inference Time: %2.2f ms(s) | mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f'% \
-                  (((end_time - start_time) / (i * train_info['BATCH_SIZE'])) * 1000,
-                   miou, iou_std, mdice, dice_std)
+        avg_fps = np.mean(fps_list)
+        message = 'FPS: %2.2f samples/s | mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f'% \
+                  (avg_fps, miou, iou_std, mdice, dice_std)
         print(message)
         logger.info(message)
         #sorted_ious = sorted(iou, key=lambda x: x[0], reverse=True)

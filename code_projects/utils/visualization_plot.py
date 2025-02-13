@@ -116,13 +116,16 @@ def remap_original(mask):
 def remap_simple(mask):
     """Remap mask which smplified classes"""
     class_remapping_exp = {
-         0: [0,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17],
+         0: [0],
          1: [1,2],
+         2: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+
     }
 
     classes_exp = {
-        0: "Non-Skin",
+        0: "Background",
         1: "Skin",
+        2: "Non-Skin",
     }
 
     colormap = get_remapped_colormap(class_remapping_exp)
