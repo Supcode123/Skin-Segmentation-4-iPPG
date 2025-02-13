@@ -10,7 +10,7 @@ from code_projects.data.dataLoader import Dataload
 from models.Archi import model_select
 from code_projects.utils.before_train import parse_eval_args, create_logger
 from code_projects.utils.visualization_plot import create_fig_test, create_fig, denormalize
-from code_projects.utils.score_cal import miou_cal, Dice_cal
+from code_projects.utils.score_cal import miou_cal, Dice_cal, compute_assd
 
 
 def main():
@@ -56,6 +56,7 @@ def main():
     iou = []
     dice = []
     fps_list = []
+    assd=[]
     start_event = torch.cuda.Event(enable_timing=True)
     end_event = torch.cuda.Event(enable_timing=True)
     with torch.no_grad():
@@ -82,14 +83,18 @@ def main():
             dice.append(dice_score.item())
             prob = torch.sigmoid(pred).squeeze(1)
             pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
+            assd_score = compute_assd(label, pred)
+            assd.append(assd_score)
             results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
         miou=np.mean(iou)
         iou_std = np.std(iou)
         mdice=np.mean(dice)
         dice_std = np.std(dice)
+        massd = np.mean(assd)
+        assd_std = np.std(assd)
         avg_fps = np.mean(fps_list)
-        message = 'FPS: %2.2f samples/s | mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f'% \
-                  (avg_fps, miou, iou_std, mdice, dice_std)
+        message = 'FPS: %2.2f samples/s | mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f' \
+                  '| mASSD: % 3.6f, Std: % 3.6f' % (avg_fps, miou, iou_std, mdice, dice_std, massd, assd_std)
         print(message)
         logger.info(message)
         #sorted_ious = sorted(iou, key=lambda x: x[0], reverse=True)
