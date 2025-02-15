@@ -97,8 +97,9 @@ def Dice_cal(model_name, pred, gth: torch.Tensor, ignore_index: int, device, smo
     pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
     pred_skin = (pred == 1).float()
     gth_skin = (gth == 1).float()
-    intersection = torch.sum(pred_skin * gth_skin * mask)
-    dice = (2. * intersection + smooth) / (torch.sum(pred_skin * mask) + torch.sum(gth_skin * mask) + smooth)
+    intersection = torch.sum(pred_skin * gth_skin * mask, dim=(1, 2))
+    dice = (2. * intersection + smooth) / (torch.sum(pred_skin * mask, dim=(1, 2)) +
+                                           torch.sum(gth_skin * mask, dim=(1, 2)) + smooth)
     return torch.mean(dice)
 
 
@@ -178,6 +179,6 @@ def compute_assd(gt, pred):
         assd = (np.mean(d_pred_to_gt) + np.mean(d_gt_to_pred)) / 2.0
         assd_list.append(assd)
 
-    avg_assd = np.mean([x for x in assd_list if x != np.inf]) 
+    avg_assd = np.mean([x for x in assd_list if x != np.inf])
     return avg_assd
 
