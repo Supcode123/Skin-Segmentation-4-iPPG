@@ -1,6 +1,8 @@
 import os
 import shutil
 import random
+import time
+
 import numpy as np
 import yaml
 import torch
@@ -55,28 +57,19 @@ def main():
     results = []
     iou = []
     dice = []
-    fps_list = []
     assd=[]
-    start_event = torch.cuda.Event(enable_timing=True)
-    end_event = torch.cuda.Event(enable_timing=True)
+
+    total_time = 0.0
+    total_samples = 0.0
+
     with torch.no_grad():
 
         pbar = tqdm(test_dataloader)
         for i, (sample, label, name) in enumerate(pbar,start=1):
+            start_time = time.time()  # record inference time
+
             sample, label = sample.to(args.device), label.to(args.device)
-
-            torch.cuda.synchronize()  # record inference time
-            start_event.record()
-
             pred = model(sample)
-
-            end_event.record()
-            torch.cuda.synchronize()
-
-            inference_time = start_event.elapsed_time(end_event) / 1000
-            fps = train_info['BATCH_SIZE']/ inference_time
-            fps_list.append(fps)
-
             iou_score, _ = miou_cal(model_info["NAME"], pred, label, data_info['CLASSES'], 255, args.device)
             iou.append(iou_score.item())
             dice_score = Dice_cal(model_info['NAME'], pred, label, 255, args.device)
@@ -85,6 +78,10 @@ def main():
             pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
             assd_score = compute_assd(label, pred)
             assd.append(assd_score)
+
+            batch_time = time.time() - start_time
+            total_time += batch_time
+            total_samples += sample.size(0)
             results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
         miou=np.mean(iou)
         iou_std = np.std(iou)
@@ -92,9 +89,9 @@ def main():
         dice_std = np.std(dice)
         massd = np.mean(assd)
         assd_std = np.std(assd)
-        avg_fps = np.mean(fps_list)
+        fps = total_samples / total_time
         message = 'FPS: %2.2f samples/s | mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f' \
-                  '| mASSD: % 3.6f, Std: % 3.6f' % (avg_fps, miou, iou_std, mdice, dice_std, massd, assd_std)
+                  '| mASSD: % 3.6f, Std: % 3.6f' % (fps, miou, iou_std, mdice, dice_std, massd, assd_std)
         print(message)
         logger.info(message)
         #sorted_ious = sorted(iou, key=lambda x: x[0], reverse=True)
