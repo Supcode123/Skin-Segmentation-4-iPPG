@@ -74,15 +74,13 @@ def main():
             iou.append(iou_score.item())
             dice_score = Dice_cal(model_info['NAME'], pred, label, 255, args.device)
             dice.append(dice_score.item())
-            prob = torch.sigmoid(pred).squeeze(1)
-            pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
-            assd_score = compute_assd(label, pred)
+           # prob = torch.sigmoid(pred).squeeze(1)
+            assd_score = compute_assd(label, pred, model_info['NAME'])
             assd.append(assd_score)
-
             batch_time = time.time() - start_time
             total_time += batch_time
             total_samples += sample.size(0)
-            results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
+            #results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
         miou=np.mean(iou)
         iou_std = np.std(iou)
         mdice=np.mean(dice)

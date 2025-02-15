@@ -143,7 +143,7 @@ def get_boundary_points(gt, pred):
     return pred_boundary_points_list, gt_boundary_points_list
 
 
-def compute_assd(gt, pred):
+def compute_assd(gt, pred, model_name):
     """
     Calculate Average Symmetric Surface Distance (ASSD)
 
@@ -154,6 +154,10 @@ def compute_assd(gt, pred):
     Returns:
     - ASSD value
     """
+
+    if model_name == "EfficientNetb0_UNet3Plus":
+        pred = pred[0]
+    pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
     pred_boundaries, gt_boundaries = get_boundary_points(gt,pred)
     batch_size = len(pred_boundaries)
     assd_list = []
