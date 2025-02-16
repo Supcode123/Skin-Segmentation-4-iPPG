@@ -9,9 +9,8 @@ MODEL:
   NAME: EfficientNetb0_UNet
   BACKBONE: efficientnet-b0
   HEAD: Unet
-  ENCODER_WEIGHTS: imagenet
+  ENCODER_WEIGHTS: null
   ENCODER_DEPTH: 5
   DECODER_CHANNELS: [ 256, 128, 64, 32, 16 ]
 TRAIN:
-  BATCH_SIZE: 4
   WORKERS: 8

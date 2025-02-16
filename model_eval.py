@@ -1,8 +1,6 @@
 import os
 import shutil
 import random
-import time
-
 import numpy as np
 import yaml
 import torch
@@ -59,14 +57,10 @@ def main():
     dice = []
     assd=[]
 
-    total_time = 0.0
-    total_samples = 0.0
-
     with torch.no_grad():
 
         pbar = tqdm(test_dataloader)
         for i, (sample, label, name) in enumerate(pbar,start=1):
-            start_time = time.time()  # record inference time
 
             sample, label = sample.to(args.device), label.to(args.device)
             pred = model(sample)
@@ -77,9 +71,6 @@ def main():
            # prob = torch.sigmoid(pred).squeeze(1)
             assd_score = compute_assd(label, pred, model_info['NAME'])
             assd.append(assd_score)
-            batch_time = time.time() - start_time
-            total_time += batch_time
-            total_samples += sample.size(0)
             #results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
         miou=np.mean(iou)
         iou_std = np.std(iou)
@@ -87,9 +78,8 @@ def main():
         dice_std = np.std(dice)
         massd = np.mean(assd)
         assd_std = np.std(assd)
-        fps = total_samples / total_time
-        message = 'FPS: %2.2f samples/s | mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f' \
-                  '| mASSD: % 3.6f, Std: % 3.6f' % (fps, miou, iou_std, mdice, dice_std, massd, assd_std)
+        message = '| mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f' \
+                  '| mASSD: % 3.6f, Std: % 3.6f' % (miou, iou_std, mdice, dice_std, massd, assd_std)
         print(message)
         logger.info(message)
         #sorted_ious = sorted(iou, key=lambda x: x[0], reverse=True)
