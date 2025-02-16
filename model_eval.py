@@ -78,6 +78,7 @@ def main():
         dice_std = np.std(dice)
         massd = np.mean(assd)
         assd_std = np.std(assd)
+        print("the len of assd_list: ", len(assd))
         message = '| mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f' \
                   '| mASSD: % 3.6f, Std: % 3.6f' % (miou, iou_std, mdice, dice_std, massd, assd_std)
         print(message)

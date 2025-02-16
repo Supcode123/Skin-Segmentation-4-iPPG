@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import torch
 import torch.nn as nn
+from medpy.metric import assd
 from scipy.spatial import cKDTree
 from torchmetrics.classification import MulticlassJaccardIndex, BinaryJaccardIndex
 from skimage import measure
@@ -103,53 +104,13 @@ def Dice_cal(model_name, pred, gth: torch.Tensor, ignore_index: int, device, smo
     return torch.mean(dice)
 
 
-def get_boundary_points(gt, pred):
-    """
-    Extract border points from mask.
-
-    Parameters:
-    - pred_tensor: (b, h, w) prediction mask tensor, each element is 0, 1 or 255.
-    - gt_tensor: (b, h, w) true label mask tensor, each element is 0, 1 or 255.
-
-    Returns:
-    - pred_boundary_points: The coordinates of the predicted boundary points, shape (N, 2).
-    - gt_boundary_points: The coordinates of the actual label boundary points, shape (N, 2).
-    """
-    pred_boundary_points_list = []
-    gt_boundary_points_list = []
-
-    for i in range(gt.shape[0]):
-        pred_mask = pred[i].cpu().numpy()
-        gt_mask = gt[i].cpu().numpy()
-        valid_mask = (gt_mask != 255).astype(np.uint8)
-
-        pred_contours, _ = cv2.findContours((pred_mask * valid_mask).astype(np.uint8),
-                                            cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-
-        if len(pred_contours) > 0:
-            pred_boundary = np.vstack(pred_contours[0]).squeeze()  # (N, 2)
-            pred_boundary_points_list.append(pred_boundary)
-        else:
-            pred_boundary_points_list.append(np.array([]))
-
-        gt_contours, _ = cv2.findContours((gt_mask * valid_mask).astype(np.uint8),
-                                            cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        if len(gt_contours) > 0:
-            gt_boundary = np.vstack(gt_contours[0]).squeeze()  # (N, 2)
-            gt_boundary_points_list.append(gt_boundary)
-        else:
-            gt_boundary_points_list.append(np.array([]))
-
-    return pred_boundary_points_list, gt_boundary_points_list
-
-
 def compute_assd(gt, pred, model_name):
     """
     Calculate Average Symmetric Surface Distance (ASSD)
 
     Parameters:
-    - pred_boundaries: List[np.ndarray], each element (N, 2)
-    - gt_boundaries: List[np.ndarray], each element (M, 2)
+    - ground truth: batch tensor of ground truth labels
+    - pred_mask: batch tensor of predicted masks
 
     Returns:
     - ASSD value
@@ -158,31 +119,21 @@ def compute_assd(gt, pred, model_name):
     if model_name == "EfficientNetb0_UNet3Plus":
         pred = pred[0]
     pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
-    pred_boundaries, gt_boundaries = get_boundary_points(gt,pred)
-    batch_size = len(pred_boundaries)
+
     assd_list = []
+    for i in range(pred.size(0)):
+        # print("Unique values in gt_np:", torch.unique(label[i]))
+        pred_np = pred[i].cpu().numpy().astype(np.uint8)
+        gt_np = gt[i].cpu().numpy().astype(np.uint8)
+        # print("Unique values in pred_np:", np.unique(pred_np))
 
-    for i in range(batch_size):
-        pred_boundary = pred_boundaries[i]
-        gt_boundary = gt_boundaries[i]
-        if pred_boundary.shape[0] == 2 and len(pred_boundary.shape) == 1:
-            pred_boundary = pred_boundary.reshape(1, 2)  # transform to shape(1, 2)
-        if gt_boundary.shape[0] == 2 and len(gt_boundary.shape) == 1:
-            gt_boundary = gt_boundary.reshape(1, 2)
-
-        if pred_boundary.size == 0 or gt_boundary.size == 0:
-            assd_list.append(np.inf)  # If is empty, ASSD is set to infinity.
-            continue
-
-        pred_tree = cKDTree(pred_boundary)
-        gt_tree = cKDTree(gt_boundary)
-
-        d_pred_to_gt, _ = pred_tree.query(gt_boundary)
-        d_gt_to_pred, _ = gt_tree.query(pred_boundary)
-
-        assd = (np.mean(d_pred_to_gt) + np.mean(d_gt_to_pred)) / 2.0
-        assd_list.append(assd)
-
+        pred_mask = ((pred_np == 1) & (gt_np != 255)).astype(np.uint8)
+        gt_mask = ((gt_np == 1) & (gt_np != 255)).astype(np.uint8)
+        # calculate ASSD
+        if pred_mask.sum() > 0 and gt_mask.sum() > 0:
+            assd_value = assd(pred_mask, gt_mask)
+            assd_list.append(assd_value)
+        #print(f"the {i + 1}th image: assd = {assd_value}")
     avg_assd = np.mean([x for x in assd_list if x != np.inf])
     return avg_assd
 
