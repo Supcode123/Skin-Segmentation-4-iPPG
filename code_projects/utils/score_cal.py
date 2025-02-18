@@ -13,32 +13,34 @@ def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
     total_pixels = mask.sum().float()
     if classes > 2:
         output = torch.softmax(pred, dim=1)  # [batch_size, num_classes, H, W]
+        output = output.argmax(1)
         # count the number of correctly classified pixels
-        correct_pixels = ((output.argmax(1) == gth) * mask).sum().float()
-        acc = correct_pixels / total_pixels
+        # correct_pixels = ((output == gth) * mask).sum().float()
+        # acc = correct_pixels / total_pixels
 
-        # probability of merging skin classes
-        skin_classes = [1, 2]
+
         # [batch_size,len(skin_classes), H, W] ->[batch_size, H, W]
-        skin_prob = output[:, skin_classes].sum(dim=1) # merge skin classes
-        skin_pre = (skin_prob > 0.5).float()  # [batch_size, H, W]
+        correct_pred_skin = (output == 1) & (gth == 1)
+        correct_pred_nose = (output == 2) & (gth == 2)
+        # merge skin classes
+        correct_pred_skin_nose = (correct_pred_skin | correct_pred_nose).float()
+        correct_skin_pixels = (correct_pred_skin_nose * mask).sum()
         gth_skin = ((gth == 1) | (gth == 2)).float()
-        total_skin = (gth_skin * mask).sum().float()
-        correct_pred_skin = ((skin_pre == 1) & (gth_skin == 1)).float()
-        correct_skin_pixels = (correct_pred_skin * mask).sum().float()
+        total_skin = (gth_skin * mask).sum()
+
         acc_skin = correct_skin_pixels / total_skin
 
     else:
         if model_name == "EfficientNetb0_UNet3Plus":
            pred = pred[0]
         output = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
-        correct = ((output == gth) * mask).sum().float()
-        acc = correct / total_pixels
+        # correct = ((output == gth) * mask).sum().float()
+        # acc = correct / total_pixels
         total_skin = ((gth == 1) * mask).sum().float()
         correct_skin_pixels = ((output == gth) * (gth == 1) * mask).sum().float()
         acc_skin = correct_skin_pixels / total_skin
 
-    return acc, acc_skin
+    return acc_skin
 
 
 def loss_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, device):
@@ -78,26 +80,33 @@ def miou_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, dev
        class_miou = MulticlassJaccardIndex(num_classes=classes, ignore_index=ignore, average='none').to(device)
        miou = class_miou(pred, gth)
        skin_miou = (miou[1]+miou[2])/2
-       miou = miou.mean()
+       # miou = miou.mean()
 
     else:
        if model_name == "EfficientNetb0_UNet3Plus":
             pred = pred[0]
        binary_miou = BinaryJaccardIndex(ignore_index=ignore).to(device)
        predictions = (torch.sigmoid(pred) > 0.5).float().squeeze(1)
-       miou = binary_miou(predictions, gth)
-       skin_miou = miou
+       skin_miou = binary_miou(predictions, gth)
+       # skin_miou = miou
 
-    return miou, skin_miou
+    return skin_miou
 
 
-def Dice_cal(model_name, pred, gth: torch.Tensor, ignore_index: int, device, smooth=1e-6):
-    if model_name == "EfficientNetb0_UNet3Plus":
-        pred = pred[0]
+def Dice_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: int, device, smooth=1e-6):
+
     mask = (gth != ignore_index).float().to(device)
-    pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
-    pred_skin = (pred == 1).float()
-    gth_skin = (gth == 1).float()
+    if classes > 2:
+        output = torch.softmax(pred, dim=1)
+        output = output.argmax(1)
+        pred_skin = ((output == 1) & (output ==2)).float()
+        gth_skin = ((gth == 1) & (gth ==2)).float()
+    else:
+        if model_name == "EfficientNetb0_UNet3Plus":
+            pred = pred[0]
+        pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
+        pred_skin = (pred == 1).float()
+        gth_skin = (gth == 1).float()
     intersection = torch.sum(pred_skin * gth_skin * mask, dim=(1, 2))
     dice = (2. * intersection + smooth) / (torch.sum(pred_skin * mask, dim=(1, 2)) +
                                            torch.sum(gth_skin * mask, dim=(1, 2)) + smooth)

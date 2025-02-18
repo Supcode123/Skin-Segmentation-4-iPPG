@@ -94,7 +94,7 @@ def main():
             batch_loss.backward()
             optimizer.step()
             with torch.no_grad():
-                train_accuracy, _ = accuracy(model_config['NAME'], train_pred, label,
+                train_accuracy = accuracy(model_config['NAME'], train_pred, label,
                                              data_config['CLASSES'], 255, device)
                 train_acc += train_accuracy.item()
             train_loss += batch_loss.item()
@@ -113,18 +113,18 @@ def main():
                 val_pred = model(sample)
                 batch_loss = loss_cal(model_config['NAME'], val_pred, label,
                                       data_config['CLASSES'], train_config["IGNORE_LABEL"], device)
-                val_accuracy, val_skin_accuracy = accuracy(model_config['NAME'], val_pred,
+                val_accuracy = accuracy(model_config['NAME'], val_pred,
                                                            label, data_config['CLASSES'], 255, device)
                 val_acc += val_accuracy.item()
-                val_skin_acc += val_skin_accuracy.item()
+                # val_skin_acc += val_skin_accuracy.item()
                 val_loss += batch_loss.item()
-                miou_score, skin_miou = miou_cal(model_config['NAME'], val_pred,
+                miou_score = miou_cal(model_config['NAME'], val_pred,
                                                  label, data_config['CLASSES'], 255, device)
-                if data_config['CLASSES'] == 2:
-                    dice = Dice_cal(model_config['NAME'], val_pred, label, 255, device)
-                    val_dice += dice.item()
+
+                dice = Dice_cal(model_config['NAME'], val_pred, label, data_config['CLASSES'], 255, device)
+                val_dice += dice.item()
                 val_miou += miou_score.item()
-                val_skin_miou += skin_miou.item()
+                # val_skin_miou += skin_miou.item()
 
             message = '[%03d/%03d] %2.2f sec(s) lr: %f Train Acc: %3.6f Loss: %3.6f |' \
                       ' Val Acc: %3.6f Loss: %3.6f M-IoU: %3.6f Dice(skin): %3.6f'% \

@@ -64,9 +64,9 @@ def main():
 
             sample, label = sample.to(args.device), label.to(args.device)
             pred = model(sample)
-            iou_score, _ = miou_cal(model_info["NAME"], pred, label, data_info['CLASSES'], 255, args.device)
+            iou_score = miou_cal(model_info["NAME"], pred, label, data_info['CLASSES'], 255, args.device)
             iou.append(iou_score.item())
-            dice_score = Dice_cal(model_info['NAME'], pred, label, 255, args.device)
+            dice_score = Dice_cal(model_info['NAME'], pred, label, data_info['CLASSES'], 255, args.device)
             dice.append(dice_score.item())
            # prob = torch.sigmoid(pred).squeeze(1)
             assd_score = compute_assd(label, pred, model_info['NAME'])
