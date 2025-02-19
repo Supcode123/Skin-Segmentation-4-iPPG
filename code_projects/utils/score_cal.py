@@ -3,9 +3,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 from medpy.metric import assd
-from scipy.spatial import cKDTree
 from torchmetrics.classification import MulticlassJaccardIndex, BinaryJaccardIndex
-from skimage import measure
+
 
 def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: int, device):
 
@@ -20,12 +19,12 @@ def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
 
 
         # [batch_size,len(skin_classes), H, W] ->[batch_size, H, W]
-        correct_pred_skin = (output == 1) & (gth == 1)
-        correct_pred_nose = (output == 2) & (gth == 2)
+        correct_pred_skin = (output == 0) & (gth == 0)
+        correct_pred_nose = (output == 1) & (gth == 1)
         # merge skin classes
         correct_pred_skin_nose = (correct_pred_skin | correct_pred_nose).float()
         correct_skin_pixels = (correct_pred_skin_nose * mask).sum()
-        gth_skin = ((gth == 1) | (gth == 2)).float()
+        gth_skin = ((gth == 0) | (gth == 1)).float()
         total_skin = (gth_skin * mask).sum()
 
         acc_skin = correct_skin_pixels / total_skin
@@ -79,7 +78,7 @@ def miou_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, dev
     if classes > 2:
        class_miou = MulticlassJaccardIndex(num_classes=classes, ignore_index=ignore, average='none').to(device)
        miou = class_miou(pred, gth)
-       skin_miou = (miou[1]+miou[2])/2
+       skin_miou = (miou[0]+miou[1])/2
        # miou = miou.mean()
 
     else:
@@ -99,8 +98,8 @@ def Dice_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
     if classes > 2:
         output = torch.softmax(pred, dim=1)
         output = output.argmax(1)
-        pred_skin = ((output == 1) & (output ==2)).float()
-        gth_skin = ((gth == 1) & (gth ==2)).float()
+        pred_skin = ((output == 0) | (output ==1)).float()
+        gth_skin = ((gth == 0) | (gth == 1)).float()
     else:
         if model_name == "EfficientNetb0_UNet3Plus":
             pred = pred[0]
@@ -113,7 +112,7 @@ def Dice_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
     return torch.mean(dice)
 
 
-def compute_assd(gt, pred, model_name):
+def compute_assd(gt, pred, model_name, classes):
     """
     Calculate Average Symmetric Surface Distance (ASSD)
 
@@ -135,10 +134,15 @@ def compute_assd(gt, pred, model_name):
         pred_np = pred[i].cpu().numpy().astype(np.uint8)
         gt_np = gt[i].cpu().numpy().astype(np.uint8)
         # print("Unique values in pred_np:", np.unique(pred_np))
+        if classes > 2:
+            pred_mask = (((pred_np == 0) | (pred_np == 1)) & (gt_np != 255)).astype(np.uint8)
+            gt_mask = (((gt_np == 0) | (gt_np == 1)) & (gt_np != 255)).astype(np.uint8)
 
-        pred_mask = ((pred_np == 1) & (gt_np != 255)).astype(np.uint8)
-        gt_mask = ((gt_np == 1) & (gt_np != 255)).astype(np.uint8)
-        # calculate ASSD
+        else:
+            pred_mask = ((pred_np == 1) & (gt_np != 255)).astype(np.uint8)
+            gt_mask = ((gt_np == 1) & (gt_np != 255)).astype(np.uint8)
+
+            # calculate ASSD
         if pred_mask.sum() > 0 and gt_mask.sum() > 0:
             assd_value = assd(pred_mask, gt_mask)
             assd_list.append(assd_value)

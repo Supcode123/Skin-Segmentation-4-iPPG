@@ -69,7 +69,7 @@ def main():
             dice_score = Dice_cal(model_info['NAME'], pred, label, data_info['CLASSES'], 255, args.device)
             dice.append(dice_score.item())
            # prob = torch.sigmoid(pred).squeeze(1)
-            assd_score = compute_assd(label, pred, model_info['NAME'])
+            assd_score = compute_assd(label, pred, model_info['NAME'],data_info['CLASSES'])
             assd.append(assd_score)
             #results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
         miou=np.mean(iou)

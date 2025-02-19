@@ -75,9 +75,7 @@ def main():
         train_loss = 0.
         val_miou = 0.
         val_acc = 0.
-        val_skin_miou = 0.
         val_loss = 0.
-        val_skin_acc = 0.
         val_dice = 0.
 
         model.train()
