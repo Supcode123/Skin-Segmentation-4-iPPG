@@ -3,8 +3,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 from medpy.metric import assd
+from scipy.spatial import cKDTree
 from torchmetrics.classification import MulticlassJaccardIndex, BinaryJaccardIndex
-
+from skimage import measure
 
 def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: int, device):
 
@@ -126,23 +127,22 @@ def compute_assd(gt, pred, model_name, classes):
 
     if model_name == "EfficientNetb0_UNet3Plus":
         pred = pred[0]
-    pred = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
 
     assd_list = []
     for i in range(pred.size(0)):
-        # print("Unique values in gt_np:", torch.unique(label[i]))
-        pred_np = pred[i].cpu().numpy().astype(np.uint8)
         gt_np = gt[i].cpu().numpy().astype(np.uint8)
-        # print("Unique values in pred_np:", np.unique(pred_np))
+        # print("Unique values in gt_np:", torch.unique(label[i]))
         if classes > 2:
-            pred_mask = (((pred_np == 0) | (pred_np == 1)) & (gt_np != 255)).astype(np.uint8)
+            output = pred[i].argmax(0).cpu().numpy().astype(np.uint8)
+            pred_mask = (((output == 0) | (output == 1)) & (gt_np != 255)).astype(np.uint8)
             gt_mask = (((gt_np == 0) | (gt_np == 1)) & (gt_np != 255)).astype(np.uint8)
-
         else:
+            binary_pred = (torch.sigmoid(pred[i]) > 0.5).int().squeeze(0)
+            pred_np = binary_pred.cpu().numpy().astype(np.uint8)
+            # print("Unique values in pred_np:", np.unique(pred_np))
             pred_mask = ((pred_np == 1) & (gt_np != 255)).astype(np.uint8)
             gt_mask = ((gt_np == 1) & (gt_np != 255)).astype(np.uint8)
-
-            # calculate ASSD
+        # calculate ASSD
         if pred_mask.sum() > 0 and gt_mask.sum() > 0:
             assd_value = assd(pred_mask, gt_mask)
             assd_list.append(assd_value)
