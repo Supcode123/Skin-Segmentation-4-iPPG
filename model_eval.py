@@ -1,6 +1,6 @@
+import json
 import os
 import shutil
-import random
 import numpy as np
 import yaml
 import torch
@@ -68,10 +68,12 @@ def main():
             iou.append(iou_score.item())
             dice_score = Dice_cal(model_info['NAME'], pred, label, data_info['CLASSES'], 255, args.device)
             dice.append(dice_score.item())
-           # prob = torch.sigmoid(pred).squeeze(1)
+            #prob = torch.sigmoid(pred).squeeze(1)
             assd_score = compute_assd(label, pred, model_info['NAME'],data_info['CLASSES'])
             assd.append(assd_score)
             #results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
+            if train_info['BATCH_SIZE'] == 1:
+               results.append((iou_score.item(), dice_score.item(), name))
         miou=np.mean(iou)
         iou_std = np.std(iou)
         mdice=np.mean(dice)
@@ -83,20 +85,19 @@ def main():
                   '| mASSD: % 3.6f, Std: % 3.6f' % (miou, iou_std, mdice, dice_std, massd, assd_std)
         print(message)
         logger.info(message)
-        #sorted_ious = sorted(iou, key=lambda x: x[0], reverse=True)
-        # random.seed(42)
-        # samples = random.sample(results, 8)
+        if train_info['BATCH_SIZE'] == 1:
+            sorted_ious = sorted(results, key=lambda x: x[0])
+            save_path = os.path.join(args.chkpt_path, "eval")
+            os.makedirs(save_path, exist_ok=True)
+            top_100_results = sorted_ious[:100]
 
-        #
-        # save_path = os.path.join(args.chkpt_path, "eval")
-        # os.makedirs(save_path, exist_ok=True)
+            save_file = os.path.join(save_path, "lowest_100_results.json")
+            with open(save_file, "w") as f:
+                json.dump(top_100_results, f, indent=4)
+
+            print(f"lowest 100 results saved to: {save_file}")
         # create_fig_test(samples, save_path)
 
-        # fig = create_fig(pred[:4, ...],
-        #                  label[:4, ...],
-        #                  denormalize(sample[:4, ...], [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        #                  data_info['CLASSES'],
-        #                  prob[:4, ...])
 
 
 if __name__ == "__main__":
