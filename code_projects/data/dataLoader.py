@@ -3,6 +3,7 @@ import cv2
 from torch.utils.data import DataLoader
 
 from code_projects.data.dataset_class import Dataset
+from data.transfrom_pipeline import pipeline
 
 
 class Dataload():
@@ -18,38 +19,7 @@ class Dataload():
     def get_dataloaders(self):
         self.train_dataset = Dataset(root=self.root,
                                      exp=self.data_info['EXP'],
-                                     transform=A.Compose([
-                                         # for SwinTransformer Windowsize, synthetic dataset
-                                         # A.RandomCrop(width=224, height=224),
-
-                                         A.HorizontalFlip(p=0.5),
-                                         A.VerticalFlip(p=0.5),
-                                         # Randomly shift,zoom,rotate
-                                         A.ShiftScaleRotate(
-                                             shift_limit=0.1,
-                                             scale_limit=0.2,
-                                             rotate_limit=30,
-                                             border_mode=cv2.BORDER_REFLECT_101,
-                                             p=0.8  # 执行的概率
-                                         ),
-                                         # Randomly adjust brightness and contrast
-                                         # A.RandomBrightnessContrast(
-                                         #     brightness_limit=0.2,
-                                         #     contrast_limit=0.2,
-                                         #     p=0.8),  # Probability of execution
-
-                                         # Randomly adjust color saturation and hue
-                                         A.ColorJitter(
-                                             brightness=(0.8, 1.2),
-                                             contrast=(0.8, 1.2),
-                                             saturation=(0.8, 1.2),
-                                             hue=(-0.1, 0.1),
-                                             p=0.8),
-                                         # Randomly apply Gaussian noise (to simulate ambient light interference)
-                                         A.GaussNoise(
-                                             var_limit=(10.0, 30.0),
-                                             p=0.3),
-                                     ]),
+                                     transform=pipeline(),
                                      img_normalization=A.Normalize(mean=self.data_info['MEAN'],
                                                                    std=self.data_info['STD']),
                                      mode='train',
