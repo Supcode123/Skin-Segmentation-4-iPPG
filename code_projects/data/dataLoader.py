@@ -3,7 +3,7 @@ import cv2
 from torch.utils.data import DataLoader
 
 from code_projects.data.dataset_class import Dataset
-from data.transfrom_pipeline import pipeline
+from code_projects.data.transfrom_pipeline import pipeline
 
 
 class Dataload():

@@ -7,6 +7,7 @@ from data.transfrom_pipeline import pipeline
 
 img = cv2.imread(r"D:\sythetic_data\dataset_100\256x256\train\images\000063.png")[:, :, ::-1]
 mask = np.array(Image.open(r"D:\sythetic_data\dataset_100\256x256\train\labels\000063_seg.png"))
+
 transform = pipeline()
 augmented = transform(image=img, mask=mask)
 aug_img = augmented['image']

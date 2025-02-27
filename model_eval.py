@@ -89,13 +89,17 @@ def main():
             sorted_ious = sorted(results, key=lambda x: x[0])
             save_path = os.path.join(args.chkpt_path, "eval")
             os.makedirs(save_path, exist_ok=True)
-            top_100_results = sorted_ious[:100]
-
+            lowest_100_results = sorted_ious[:10]
+            highest_10_results = sorted_ious[-10:]
             save_file = os.path.join(save_path, "lowest_100_results.json")
             with open(save_file, "w") as f:
-                json.dump(top_100_results, f, indent=4)
+                json.dump(lowest_100_results, f, indent=4)
+            highest_file = os.path.join(save_path, "highest_10_results.json")
+            with open(highest_file, "w") as f:
+                json.dump(highest_10_results, f, indent=4)
+            print(f"Highest 10 results saved to: {highest_file}")
+            print(f"lowest 10 results saved to: {save_file}")
 
-            print(f"lowest 100 results saved to: {save_file}")
         # create_fig_test(samples, save_path)
 
 
