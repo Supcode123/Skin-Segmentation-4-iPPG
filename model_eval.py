@@ -73,7 +73,8 @@ def main():
             assd.append(assd_score)
             #results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
             if train_info['BATCH_SIZE'] == 1:
-               results.append((iou_score.item(), dice_score.item(), name, pred.squeeze(0), sample.squeeze(0), label.squeeze(0)))
+                results.append((iou_score.item(), dice_score.item(), name))
+               #results.append((iou_score.item(), dice_score.item(), name, pred.squeeze(0), sample.squeeze(0), label.squeeze(0)))
         miou=np.mean(iou)
         iou_std = np.std(iou)
         mdice=np.mean(dice)
@@ -94,19 +95,28 @@ def main():
             lowest_results = sorted_ious[:10]
             highest_results = sorted_ious[-10:]
             save_file = os.path.join(lowest_path, "lowest_100_results.json")
-            lowest_results_ = [tup[:3] for tup in lowest_results]
             with open(save_file, "w") as f:
-                json.dump(lowest_results_, f, indent=4)
+                json.dump(lowest_results, f, indent=4)
             highest_file = os.path.join(highest_path, "highest_100_results.json")
-            highest_results_ = [tup[:3] for tup in highest_results]
             with open(highest_file, "w") as f:
-                json.dump(highest_results_, f, indent=4)
-            print(f"Highest 10 results saved to: {highest_file}")
-            print(f"lowest 10 results saved to: {save_file}")
+                json.dump(highest_results, f, indent=4)
+            print(f"Highest 100 results saved to: {highest_file}")
+            print(f"lowest 100 results saved to: {save_file}")
+            lowest_results_to_show = lowest_results[:10]
+            highest_results_to_show = highest_results[:10]
+            pre_to_show(args, model, test_dataloader, lowest_results_to_show, lowest_path)
+            pre_to_show(args, model, test_dataloader, highest_results_to_show, highest_path)
+            print(f"Visualiztion Pics saved")
+def pre_to_show(args,model,test_dataloader,results,path):
 
-        create_fig_test(lowest_results[:10], lowest_path)
-        create_fig_test(highest_results[-10:], highest_path)
-
+    for i, (sample, label, name) in enumerate(test_dataloader):
+        for j, result in enumerate(results):
+            if name[0] in result[2]:
+                sample, label = sample.to(args.device), label.to(args.device)
+                pred = model(sample)
+                new_result = result + (pred.squeeze(0), sample.squeeze(0), label.squeeze(0))
+                results[j] = new_result
+    create_fig_test(results, path)
 
 
 if __name__ == "__main__":
