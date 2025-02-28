@@ -73,7 +73,7 @@ def main():
             assd.append(assd_score)
             #results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
             if train_info['BATCH_SIZE'] == 1:
-               results.append((iou_score.item(), dice_score.item(), name))
+               results.append((iou_score.item(), dice_score.item(), name, pred.squeeze(0), sample.squeeze(0), label.squeeze(0)))
         miou=np.mean(iou)
         iou_std = np.std(iou)
         mdice=np.mean(dice)
@@ -87,20 +87,25 @@ def main():
         logger.info(message)
         if train_info['BATCH_SIZE'] == 1:
             sorted_ious = sorted(results, key=lambda x: x[0])
-            save_path = os.path.join(args.chkpt_path, "eval")
-            os.makedirs(save_path, exist_ok=True)
-            lowest_100_results = sorted_ious[:10]
-            highest_10_results = sorted_ious[-10:]
-            save_file = os.path.join(save_path, "lowest_100_results.json")
+            lowest_path = os.path.join(args.chkpt_path, "eval", "lowest")
+            highest_path = os.path.join(args.chkpt_path, "eval", "highest")
+            os.makedirs(lowest_path, exist_ok=True)
+            os.makedirs(highest_path, exist_ok=True)
+            lowest_results = sorted_ious[:10]
+            highest_results = sorted_ious[-10:]
+            save_file = os.path.join(lowest_path, "lowest_100_results.json")
+            lowest_results_ = [tup[:3] for tup in lowest_results]
             with open(save_file, "w") as f:
-                json.dump(lowest_100_results, f, indent=4)
-            highest_file = os.path.join(save_path, "highest_10_results.json")
+                json.dump(lowest_results_, f, indent=4)
+            highest_file = os.path.join(highest_path, "highest_100_results.json")
+            highest_results_ = [tup[:3] for tup in highest_results]
             with open(highest_file, "w") as f:
-                json.dump(highest_10_results, f, indent=4)
+                json.dump(highest_results_, f, indent=4)
             print(f"Highest 10 results saved to: {highest_file}")
             print(f"lowest 10 results saved to: {save_file}")
 
-        # create_fig_test(samples, save_path)
+        create_fig_test(lowest_results[:10], lowest_path)
+        create_fig_test(highest_results[-10:], highest_path)
 
 
 

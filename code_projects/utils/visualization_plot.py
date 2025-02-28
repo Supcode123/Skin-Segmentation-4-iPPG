@@ -117,15 +117,15 @@ def remap_simple(mask):
     """Remap mask which smplified classes"""
     class_remapping_exp = {
          0: [0],
-         1: [1,2],
-         2: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+         1: [1],
+        # 2: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
 
     }
 
     classes_exp = {
-        0: "Background",
+        0: "Non_Skin",
         1: "Skin",
-        2: "Non-Skin",
+        # 255: "Ignore",
     }
 
     colormap = get_remapped_colormap(class_remapping_exp)
@@ -141,23 +141,24 @@ def get_colormap():
         [
             [58, 0, 82],
             [253, 234, 39],
-            [255, 156, 201],
-            [99, 0, 255],
-            [255, 0, 0],
-            [255, 0, 165],
-            [141, 141, 141],
-            [255, 218, 0],
-            [173, 156, 255],
-            [73, 73, 73],
-            [250, 213, 255],
-            [255, 156, 156],
-            [99, 255, 0],
-            [157, 225, 255],
-            [255, 89, 124],
-            [173, 255, 156],
-            [255, 60, 0],
-            [40, 0, 255],
-            [255, 255, 255],
+
+            # [255, 156, 201],
+            # [99, 0, 255],
+            # [255, 0, 0],
+            # [255, 0, 165],
+            # [141, 141, 141],
+            # [255, 218, 0],
+            # [173, 156, 255],
+            # [73, 73, 73],
+            # [250, 213, 255],
+            # [255, 156, 156],
+            # [99, 255, 0],
+            # [157, 225, 255],
+            # [255, 89, 124],
+            # [173, 255, 156],
+            # [255, 60, 0],
+            # [40, 0, 255],
+            # [255, 255, 255],
         ]
     )
 
@@ -177,6 +178,8 @@ def remap_mask(mask, class_remapping, ignore_label=255):
     assert len(classes) == len(set(classes))
 
     N = max(len(classes), mask.max() + 1)
+    N = int(N)
+    mask = mask.astype(np.int32)
     remap_array = np.full(N, ignore_label, dtype=np.uint8)
     for key, val in class_remapping.items():
         for v in val:
@@ -387,25 +390,51 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
 
 def create_fig_test(samples: list, save_path: str):
 
-    for n in range(4):
-        remapped_pred_mask, classes, colormap = remap_simple(samples[n][1].cpu().numpy())
-        remapped_gt_mask, _, _ = remap_simple(samples[n][2].cpu().numpy())
+    for n in range(len(samples)):
+        pred_mask = (torch.sigmoid(samples[n][3]) > 0.5).float().squeeze(0)
+        pred_mask = pred_mask.cpu().numpy()
+        mask_255 = (samples[n][5].cpu().numpy() == 255)
+        pred_mask[mask_255] = 255
+        #x = np.unique(pred_mask)
+        remapped_pred_mask, classes, colormap = remap_simple(pred_mask)
+        # remapped_gt_mask, _, _ = remap_simple(samples[n][2].cpu().numpy())
         pred_mask_rgb = mask_to_colormap(remapped_pred_mask, colormap=colormap)
-        gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)
-        sample = denormalize(samples[n][3], [123.675, 116.28, 103.53], [58.395, 57.12, 57.375])
-        img = sample.permute(1, 2, 0).cpu().numpy()
-        # image
-        img_name = samples[n][0][0].split('.')[0]
-        dir_path = os.path.join(save_path, img_name)
-        os.makedirs(dir_path)
-        plt.imsave(os.path.join(dir_path, 'img.png'), img)
+        #gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)
+        sample = denormalize(samples[n][4], [123.675, 116.28, 103.53], [58.395, 57.12, 57.375])
+        sample = sample.squeeze(0)
+        img = sample.permute(1, 2, 0).cpu().numpy().astype(np.uint8)
+        #overlay
+        overlay = cv2.cvtColor(img.copy(), cv2.COLOR_RGB2GRAY)
+        overlay = cv2.cvtColor(overlay, cv2.COLOR_GRAY2RGB)
+        alpha = 0.4
+        overlay = (overlay * (1 - alpha) + pred_mask_rgb * alpha).astype(np.uint8)
 
-        # ground truth mask
-        plot(dir_path, remapped_gt_mask, gt_mask_rgb, colormap, classes, 'gt.png')
-        # predicted mask with 2 classes
-        plot(dir_path, remapped_pred_mask, pred_mask_rgb, colormap, classes, 'pred.png')
-        # predicted mask with 2 classes and probability heatmap
-        plot(dir_path, remapped_pred_mask, pred_mask_rgb, colormap, classes, 'hotmap.png', samples[n][4])
+        # image
+        img_name = samples[n][2][0]
+        fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+
+        axes[0].imshow(img)
+        axes[0].axis("off")
+        axes[0].set_title("Original Image")
+
+        axes[1].imshow(overlay)
+        axes[1].axis("off")
+        axes[1].set_title(f"IoU:{samples[n][0]}\nDice:{samples[n][1]}")
+
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_path, img_name), dpi=300)
+        plt.close()
+
+        # dir_path = os.path.join(save_path, img_name)
+        # os.makedirs(dir_path)
+        # plt.imsave(os.path.join(save_path, img_name), img)
+
+        # # ground truth mask
+        # plot(dir_path, remapped_gt_mask, gt_mask_rgb, colormap, classes, 'gt.png')
+        # # predicted mask with 2 classes
+        # plot(dir_path, remapped_pred_mask, pred_mask_rgb, colormap, classes, 'pred.png')
+        # # predicted mask with 2 classes and probability heatmap
+        # plot(dir_path, remapped_pred_mask, pred_mask_rgb, colormap, classes, 'hotmap.png', samples[n][4])
 
 
 def denormalize(img_tensor: torch.Tensor, mean: list , std: list) -> torch.Tensor:
