@@ -80,8 +80,53 @@ class GradientLighting(A.DualTransform):
         return {"image": img, "mask": mask}
 
 
-# ** Noise, emulating real skin **
+import albumentations as A
+import numpy as np
+import cv2
 
+
+class ExposureEnhancement(A.DualTransform):
+
+    def __init__(self, mode="overexposed", contrast_factor=1.5, always_apply=False, noise_std=30, p=0.5):
+
+        super().__init__(always_apply, p)
+        assert mode in ["overexposed", "underexposed"], "Mode must be 'overexposed' or 'underexposed'"
+        self.mode = mode
+        self.contrast_factor = contrast_factor
+        self.noise_std= noise_std
+
+    def apply(self, img, **params):
+
+        return img
+
+    def apply_to_mask(self, mask, **params):
+        return mask
+
+    def apply_to_image_and_mask(self, image, mask=None, **params):
+
+        img = image.astype(np.float32)
+
+        if self.mode == "overexposed":
+            img = img * self.contrast_factor  # 提高亮度
+            noise = np.random.normal(20, self.noise_std, img.shape).astype(np.float32)  # 添加白噪声
+            img += noise
+        elif self.mode == "underexposed":
+            img = img / self.contrast_factor  # 降低亮度
+            noise = np.random.normal(-20, self.noise_std, img.shape).astype(np.float32)  # 添加黑噪声
+            img += noise
+
+        return np.clip(img, 0, 255).astype(np.uint8), mask
+
+    def apply_with_params(self, params, image, mask=None, **kwargs):
+        img, mask = self.apply_to_image_and_mask(image, mask)
+        return {"image": img, "mask": mask}
+
+    def get_transform_init_args(self):
+        return {
+            "mode": self.mode,
+            "contrast_factor": self.contrast_factor,
+            "noise_std": self.noise_std
+        }
 
 
 class SkinColorJitter(A.DualTransform):
