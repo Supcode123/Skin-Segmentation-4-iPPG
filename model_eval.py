@@ -104,10 +104,10 @@ def main():
             print(f"lowest 100 results saved to: {save_file}")
             lowest_results_to_show = lowest_results[:10]
             highest_results_to_show = highest_results[:10]
-            pre_to_show(args, model, test_dataloader, lowest_results_to_show, lowest_path)
-            pre_to_show(args, model, test_dataloader, highest_results_to_show, highest_path)
+            pre_to_show(args, model, test_dataloader, lowest_results_to_show, lowest_path, data_info['CLASSES'])
+            pre_to_show(args, model, test_dataloader, highest_results_to_show, highest_path, data_info['CLASSES'])
             print(f"Visualiztion Pics saved")
-def pre_to_show(args,model,test_dataloader,results,path):
+def pre_to_show(args,model,test_dataloader,results,path, cls):
 
     for i, (sample, label, name) in enumerate(test_dataloader):
         for j, result in enumerate(results):
@@ -116,7 +116,7 @@ def pre_to_show(args,model,test_dataloader,results,path):
                 pred = model(sample)
                 new_result = result + (pred.squeeze(0), sample.squeeze(0), label.squeeze(0))
                 results[j] = new_result
-    create_fig_test(results, path)
+    create_fig_test(results, path, cls)
 
 
 if __name__ == "__main__":

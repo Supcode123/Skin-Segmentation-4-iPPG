@@ -88,25 +88,25 @@ def remap_original(mask):
         # 18: [18],
     }
     classes_exp = {
-        0: 'Background',
-        1: 'Skin',
-        2: 'Nose',
-        3: 'Right_Eye',
-        4: 'Left_Eye',
-        5: 'Right_Brow',
-        6: 'Left_Brow',
-        7: 'Right_Ear',
-        8: 'Left_Ear',
-        9: 'Mouth_Interior',
-        10: 'Top_Lip',
-        11: 'Bottom_Lip',
-        12: 'Neck',
-        13: 'Hair',
-        14: 'Beard',
-        15: 'Clothing',
-        16: 'Glasses',
-        17: 'Headwear',
-       # 18: 'Facewear',
+        # 0: 'Background',
+        0: 'Skin',
+        1: 'Nose',
+        2: 'Right_Eye',
+        3: 'Left_Eye',
+        4: 'Right_Brow',
+        5: 'Left_Brow',
+        6: 'Right_Ear',
+        7: 'Left_Ear',
+        8: 'Mouth_Interior',
+        9: 'Top_Lip',
+        10: 'Bottom_Lip',
+        11: 'Neck',
+        12: 'Hair',
+        13: 'Beard',
+        14: 'Clothing',
+        15: 'Glasses',
+        16: 'Headwear',
+        17: 'Facewear',
     }
     colormap = get_remapped_colormap(class_remapping_exp)
     remapped_mask = remap_mask(mask, class_remapping=class_remapping_exp)
@@ -139,26 +139,27 @@ def get_colormap():
     """
     return np.asarray(
         [
-            [58, 0, 82],
             [253, 234, 39],
+            [58, 0, 82],
+            #[253, 234, 39],
 
-            # [255, 156, 201],
-            # [99, 0, 255],
-            # [255, 0, 0],
-            # [255, 0, 165],
-            # [141, 141, 141],
-            # [255, 218, 0],
-            # [173, 156, 255],
-            # [73, 73, 73],
-            # [250, 213, 255],
-            # [255, 156, 156],
-            # [99, 255, 0],
-            # [157, 225, 255],
-            # [255, 89, 124],
-            # [173, 255, 156],
-            # [255, 60, 0],
-            # [40, 0, 255],
-            # [255, 255, 255],
+            [255, 156, 201],
+            [99, 0, 255],
+            [255, 0, 0],
+            [255, 0, 165],
+            [141, 141, 141],
+            [255, 218, 0],
+            [173, 156, 255],
+            [73, 73, 73],
+            [250, 213, 255],
+            [255, 156, 156],
+            [99, 255, 0],
+            [157, 225, 255],
+            [255, 89, 124],
+            [173, 255, 156],
+            [255, 60, 0],
+            [40, 0, 255],
+            [255, 255, 255]
         ]
     )
 
@@ -388,7 +389,7 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
     return fig
 
 
-def create_fig_test(samples: list, save_path: str):
+def create_fig_test(samples: list, save_path: str, cls):
 
     for n in range(len(samples)):
         pred_mask = (torch.sigmoid(samples[n][3]) > 0.5).float().squeeze(0)
@@ -396,7 +397,10 @@ def create_fig_test(samples: list, save_path: str):
         mask_255 = (samples[n][5].cpu().numpy() == 255)
         pred_mask[mask_255] = 255
         #x = np.unique(pred_mask)
-        remapped_pred_mask, classes, colormap = remap_simple(pred_mask)
+        if cls == 2:
+           remapped_pred_mask, classes, colormap = remap_simple(pred_mask)
+        else:
+            remapped_pred_mask, classes, colormap = remap_original(pred_mask)
         # remapped_gt_mask, _, _ = remap_simple(samples[n][2].cpu().numpy())
         pred_mask_rgb = mask_to_colormap(remapped_pred_mask, colormap=colormap)
         #gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)

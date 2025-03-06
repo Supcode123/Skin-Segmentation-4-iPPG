@@ -15,20 +15,20 @@ def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
         output = torch.softmax(pred, dim=1)  # [batch_size, num_classes, H, W]
         output = output.argmax(1)
         # count the number of correctly classified pixels
-        # correct_pixels = ((output == gth) * mask).sum().float()
-        # acc = correct_pixels / total_pixels
+        correct_pixels = ((output == gth) * mask).sum().float()
+        acc = correct_pixels / total_pixels
 
 
         # [batch_size,len(skin_classes), H, W] ->[batch_size, H, W]
-        correct_pred_skin = (output == 0) & (gth == 0)
-        correct_pred_nose = (output == 1) & (gth == 1)
-        # merge skin classes
-        correct_pred_skin_nose = (correct_pred_skin | correct_pred_nose).float()
-        correct_skin_pixels = (correct_pred_skin_nose * mask).sum()
-        gth_skin = ((gth == 0) | (gth == 1)).float()
-        total_skin = (gth_skin * mask).sum()
+        # correct_pred_skin = (output == 0) & (gth == 0)
+        # correct_pred_nose = (output == 1) & (gth == 1)
+        # # merge skin classes
+        # correct_pred_skin_nose = (correct_pred_skin | correct_pred_nose).float()
+        # correct_skin_pixels = (correct_pred_skin_nose * mask).sum()
+        # gth_skin = ((gth == 0) | (gth == 1)).float()
+        # total_skin = (gth_skin * mask).sum()
+        # acc_skin = correct_skin_pixels / total_skin
 
-        acc_skin = correct_skin_pixels / total_skin
 
     else:
         if model_name == "EfficientNetb0_UNet3Plus":
@@ -36,17 +36,22 @@ def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
         output = (torch.sigmoid(pred) > 0.5).int().squeeze(1)
         # correct = ((output == gth) * mask).sum().float()
         # acc = correct / total_pixels
-        total_skin = ((gth == 1) * mask).sum().float()
-        correct_skin_pixels = ((output == gth) * (gth == 1) * mask).sum().float()
-        acc_skin = correct_skin_pixels / total_skin
+        #total_skin = ((gth == 1) * mask).sum().float()
+        #correct_skin_pixels = ((output == gth) * (gth == 1) * mask).sum().float()
+        correct_pixels = ((output == gth) * mask).sum().float()
+        acc = correct_pixels / total_pixels
 
-    return acc_skin
+    return acc
 
 
 def loss_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, device):
 
     if classes > 2:
-        criterion = nn.CrossEntropyLoss(ignore_index=ignore)
+        num_classes = pred.shape[1]
+        weights = torch.ones(num_classes).to(pred.device)  # By default, all categories have a weight of 1.
+        weights[0] = 5.0
+        weights[1] = 5.0
+        criterion = nn.CrossEntropyLoss(ignore_index=ignore, weight=weights)
         score = criterion(pred, gth)
     else:
         criterion = nn.BCEWithLogitsLoss(reduction='none')
