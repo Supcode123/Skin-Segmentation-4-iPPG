@@ -47,7 +47,7 @@ def main():
     print("##### Load model etc.")
 
     model = model_select(model_info,data_info).to(args.device)
-    model.load_state_dict(torch.load(os.path.join(args.chkpt_path, "model_checkpoint.pt"), map_location=args.device))
+    model.load_state_dict(torch.load(os.path.join(args.chkpt_path, "model_checkpoint_18.pt"), map_location=args.device))
     model.eval()
 
 
@@ -103,7 +103,7 @@ def main():
             print(f"Highest 100 results saved to: {highest_file}")
             print(f"lowest 100 results saved to: {save_file}")
             lowest_results_to_show = lowest_results[:10]
-            highest_results_to_show = highest_results[:10]
+            highest_results_to_show = highest_results[-10:]
             pre_to_show(args, model, test_dataloader, lowest_results_to_show, lowest_path, data_info['CLASSES'])
             pre_to_show(args, model, test_dataloader, highest_results_to_show, highest_path, data_info['CLASSES'])
             print(f"Visualiztion Pics saved")

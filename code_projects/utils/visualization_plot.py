@@ -392,14 +392,16 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
 def create_fig_test(samples: list, save_path: str, cls):
 
     for n in range(len(samples)):
-        pred_mask = (torch.sigmoid(samples[n][3]) > 0.5).float().squeeze(0)
-        pred_mask = pred_mask.cpu().numpy()
         mask_255 = (samples[n][5].cpu().numpy() == 255)
-        pred_mask[mask_255] = 255
         #x = np.unique(pred_mask)
         if cls == 2:
-           remapped_pred_mask, classes, colormap = remap_simple(pred_mask)
+            pred_mask = (torch.sigmoid(samples[n][3]) > 0.5).float().squeeze(0)
+            pred_mask = pred_mask.cpu().numpy()
+            pred_mask[mask_255] = 255
+            remapped_pred_mask, classes, colormap = remap_simple(pred_mask)
         else:
+            pred_mask = samples[n][3].argmax(0).cpu().numpy()
+            pred_mask[mask_255] = 255
             remapped_pred_mask, classes, colormap = remap_original(pred_mask)
         # remapped_gt_mask, _, _ = remap_simple(samples[n][2].cpu().numpy())
         pred_mask_rgb = mask_to_colormap(remapped_pred_mask, colormap=colormap)
@@ -410,7 +412,7 @@ def create_fig_test(samples: list, save_path: str, cls):
         #overlay
         overlay = cv2.cvtColor(img.copy(), cv2.COLOR_RGB2GRAY)
         overlay = cv2.cvtColor(overlay, cv2.COLOR_GRAY2RGB)
-        alpha = 0.4
+        alpha = 0.3
         overlay = (overlay * (1 - alpha) + pred_mask_rgb * alpha).astype(np.uint8)
 
         # image
