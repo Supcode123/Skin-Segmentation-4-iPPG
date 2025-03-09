@@ -49,8 +49,9 @@ def loss_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, dev
     if classes > 2:
         num_classes = pred.shape[1]
         weights = torch.ones(num_classes).to(pred.device)  # By default, all categories have a weight of 1.
-        weights[0] = 5.0
-        weights[1] = 5.0
+        weights[0] = weights[1] = 10.0
+        weights[2] = weights[3] = weights[4] = weights[5] = \
+            weights[8] = weights[9] = weights[10] = 5.0
         criterion = nn.CrossEntropyLoss(ignore_index=ignore, weight=weights)
         score = criterion(pred, gth)
     else:
@@ -150,8 +151,11 @@ def compute_assd(gt, pred, model_name, classes):
         # calculate ASSD
         if pred_mask.sum() > 0 and gt_mask.sum() > 0:
             assd_value = assd(pred_mask, gt_mask)
-            assd_list.append(assd_value)
+            if not np.isnan(assd_value) and not np.isinf(assd_value):
+               assd_list.append(assd_value)
+        else:
+            assd_list.append(0)
         #print(f"the {i + 1}th image: assd = {assd_value}")
-    avg_assd = np.mean([x for x in assd_list if x != np.inf])
+    avg_assd = np.mean(assd_list)
     return avg_assd
 

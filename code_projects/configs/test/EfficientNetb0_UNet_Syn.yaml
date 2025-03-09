@@ -3,8 +3,8 @@ DATA:
   IMG_SIZE: (3, 256, 256)
   MEAN: [ 0.485, 0.456, 0.406 ]
   STD: [ 0.229, 0.224, 0.225 ]
-  CLASSES: 2
-  EXP: EXP2
+  CLASSES: 18
+  EXP: EXP1
 MODEL:
   NAME: EfficientNetb0_UNet
   BACKBONE: efficientnet-b0
