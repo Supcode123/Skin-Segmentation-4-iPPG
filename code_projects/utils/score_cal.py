@@ -49,9 +49,7 @@ def loss_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, dev
     if classes > 2:
         num_classes = pred.shape[1]
         weights = torch.ones(num_classes).to(pred.device)  # By default, all categories have a weight of 1.
-        weights[0] = weights[1] = 10.0
-        weights[2] = weights[3] = weights[4] = weights[5] = \
-            weights[8] = weights[9] = weights[10] = 5.0
+        weights[1] = weights[2] = 5.0
         criterion = nn.CrossEntropyLoss(ignore_index=ignore, weight=weights)
         score = criterion(pred, gth)
     else:
@@ -85,7 +83,7 @@ def miou_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, dev
     if classes > 2:
        class_miou = MulticlassJaccardIndex(num_classes=classes, ignore_index=ignore, average='none').to(device)
        miou = class_miou(pred, gth)
-       skin_miou = (miou[0]+miou[1])/2
+       skin_miou = (miou[1]+miou[2])/2
        # miou = miou.mean()
 
     else:
@@ -105,8 +103,8 @@ def Dice_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
     if classes > 2:
         output = torch.softmax(pred, dim=1)
         output = output.argmax(1)
-        pred_skin = ((output == 0) | (output ==1)).float()
-        gth_skin = ((gth == 0) | (gth == 1)).float()
+        pred_skin = ((output == 1) | (output ==2)).float()
+        gth_skin = ((gth == 1) | (gth == 2)).float()
     else:
         if model_name == "EfficientNetb0_UNet3Plus":
             pred = pred[0]
@@ -140,8 +138,8 @@ def compute_assd(gt, pred, model_name, classes):
         # print("Unique values in gt_np:", torch.unique(label[i]))
         if classes > 2:
             output = pred[i].argmax(0).cpu().numpy().astype(np.uint8)
-            pred_mask = (((output == 0) | (output == 1)) & (gt_np != 255)).astype(np.uint8)
-            gt_mask = (((gt_np == 0) | (gt_np == 1)) & (gt_np != 255)).astype(np.uint8)
+            pred_mask = (((output == 1) | (output == 2)) & (gt_np != 255)).astype(np.uint8)
+            gt_mask = (((gt_np == 1) | (gt_np == 2)) & (gt_np != 255)).astype(np.uint8)
         else:
             binary_pred = (torch.sigmoid(pred[i]) > 0.5).int().squeeze(0)
             pred_np = binary_pred.cpu().numpy().astype(np.uint8)

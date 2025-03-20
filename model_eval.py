@@ -69,8 +69,8 @@ def main():
             dice_score = Dice_cal(model_info['NAME'], pred, label, data_info['CLASSES'], 255, args.device)
             dice.append(dice_score.item())
             #prob = torch.sigmoid(pred).squeeze(1)
-            assd_score = compute_assd(label, pred, model_info['NAME'],data_info['CLASSES'])
-            assd.append(assd_score)
+            #assd_score = compute_assd(label, pred, model_info['NAME'],data_info['CLASSES'])
+            #assd.append(assd_score)
             #results.append((name, pred.squeeze(0), label.squeeze(0), sample.squeeze(0), prob.squeeze(0)))
             if train_info['BATCH_SIZE'] == 1:
                 results.append((iou_score.item(), dice_score.item(), name))
@@ -79,11 +79,11 @@ def main():
         iou_std = np.std(iou)
         mdice=np.mean(dice)
         dice_std = np.std(dice)
-        massd = np.mean(assd)
-        assd_std = np.std(assd)
+        #massd = np.mean(assd)
+        #assd_std = np.std(assd)
         print("the len of assd_list: ", len(assd))
         message = '| mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f' \
-                  '| mASSD: % 3.6f, Std: % 3.6f' % (miou, iou_std, mdice, dice_std, massd, assd_std)
+                  '| ' % (miou, iou_std, mdice, dice_std)
         print(message)
         logger.info(message)
         if train_info['BATCH_SIZE'] == 1:

@@ -139,9 +139,9 @@ def get_colormap():
     """
     return np.asarray(
         [
-            [253, 234, 39],
+            #[253, 234, 39], yellow
             [58, 0, 82],
-            #[253, 234, 39],
+            [253, 234, 39],
 
             [255, 156, 201],
             [99, 0, 255],
@@ -345,7 +345,7 @@ def create_fig(pred_mask_batch: torch.Tensor, gt_mask_batch: torch.Tensor,
     # for i, title in enumerate(col_titles):
     #     fig.text(0.1 + i * 0.25, 1.0, title, ha='center', va='center', fontsize=12)
     for n in range(N):
-        if cls == 18 :
+        if cls > 2 :
             # with 19 classes
             remapped_pred_mask_18, classes_18, colormap_18 = remap_original(pred_mask_batch[n, ...].cpu().numpy())
             remapped_gt_mask, _, _ = remap_original(gt_mask_batch[n, ...].cpu().numpy())
@@ -399,10 +399,12 @@ def create_fig_test(samples: list, save_path: str, cls):
             pred_mask = pred_mask.cpu().numpy()
             pred_mask[mask_255] = 255
             remapped_pred_mask, classes, colormap = remap_simple(pred_mask)
-        else:
+        elif cls > 2:
             pred_mask = samples[n][3].argmax(0).cpu().numpy()
             pred_mask[mask_255] = 255
             remapped_pred_mask, classes, colormap = remap_original(pred_mask)
+        else:
+            raise ValueError
         # remapped_gt_mask, _, _ = remap_simple(samples[n][2].cpu().numpy())
         pred_mask_rgb = mask_to_colormap(remapped_pred_mask, colormap=colormap)
         #gt_mask_rgb = mask_to_colormap(remapped_gt_mask, colormap=colormap)

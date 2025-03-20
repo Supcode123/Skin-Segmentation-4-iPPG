@@ -18,6 +18,7 @@ class Dataload():
 
     def get_dataloaders(self):
         self.train_dataset = Dataset(root=self.root,
+                                     num_classes=self.data_info['CLASSES'],
                                      exp=self.data_info['EXP'],
                                      transform=pipeline(),
                                      img_normalization=A.Normalize(mean=self.data_info['MEAN'],
@@ -36,6 +37,7 @@ class Dataload():
                                            )
 
         self.val_dataset = Dataset(root=self.root,
+                                   num_classes=self.data_info['CLASSES'],
                                    exp=self.data_info['EXP'],
                                    # transform= None,
                                    # transform=A.CenterCrop(width=224, height=224), # for Swin_Unet, synthetic dataset
@@ -57,6 +59,7 @@ class Dataload():
 
     def get_test_dataloaders(self):
         self.test_dataset = Dataset(root=self.root,
+                                    num_classes=self.data_info['CLASSES'],
                                     exp=self.data_info['EXP'],
                                     transform=None,
                                     img_normalization=A.Normalize(mean=self.data_info['MEAN'],
