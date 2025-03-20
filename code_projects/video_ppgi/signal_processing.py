@@ -4,7 +4,7 @@ import numpy as np
 from scipy import signal
 
 
-def filter_signal(sig:np.ndarray,fs:float,cutoff_freqs :List[float,float],order:int=10) -> np.ndarray:
+def filter_signal(sig:np.ndarray,fs:float,cutoff_freqs :List[float],order:int=10) -> np.ndarray:
     """Applys butterworth bandpass filter to signal without phase shift (forward-backward filter)
 
     Args:

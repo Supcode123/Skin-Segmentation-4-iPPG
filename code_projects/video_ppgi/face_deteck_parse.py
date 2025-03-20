@@ -101,13 +101,13 @@ def segment_skin(face_img: List[np.ndarray], batch_size: int = 1):
     model = smp.Unet(
         encoder_name='efficientnet-b0',
         encoder_weights=None,
-        classes=18,
+        classes=1,
         activation=None,
         encoder_depth=5,
         decoder_channels=[256, 128, 64, 32, 16]
     ).to('cuda')
     model.load_state_dict(
-        torch.load(r'D:\Skin-Segmentation-4-iPPG\log\EfficientNetb0_UNet_synthetic\model_checkpoint_18.pt',
+        torch.load(r'C:\kshi\Skin-Segmentation-4-iPPG\log\model_checkpoint_2.pt',
                    map_location='cuda'))
     model.eval()
 
@@ -117,5 +117,5 @@ def segment_skin(face_img: List[np.ndarray], batch_size: int = 1):
             sample = sample.to("cuda" if torch.cuda.is_available() else "cpu")
             pred = model(sample)
             pred_list.append(pred)
-        print(f"**** inference of {i} imgs done ")
+        print(f"**** inference of {len(pred_list)} imgs done ")
     return pred_list
