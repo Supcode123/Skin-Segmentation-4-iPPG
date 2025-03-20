@@ -2,7 +2,7 @@ from typing import Tuple
 from matplotlib import pyplot as plt
 import numpy as np
 import cv2
-from code_projects.video_ppgi.face_deteck_parse import segment_skin
+from code_projects.video_ppgi.face_parse import segment_skin
 from code_projects.video_ppgi.ppgi_algorithms import extract_bvp_POS
 from code_projects.video_ppgi.roi_extraction import extract_roi, apply_masks
 from code_projects.video_ppgi.signal_processing import filter_signal, compute_power_spectrum
