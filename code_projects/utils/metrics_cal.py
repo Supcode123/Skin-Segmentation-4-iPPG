@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import torch
-import torch.nn as nn
 from medpy.metric import assd
 from scipy.spatial import cKDTree
 from torchmetrics.classification import MulticlassJaccardIndex, BinaryJaccardIndex
@@ -42,37 +41,6 @@ def accuracy(model_name, pred, gth: torch.Tensor, classes: int, ignore_index: in
         acc = correct_pixels / total_pixels
 
     return acc
-
-
-def loss_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, device):
-
-    if classes > 2:
-        num_classes = pred.shape[1]
-        weights = torch.ones(num_classes).to(pred.device)  # By default, all categories have a weight of 1.
-        weights[1] = weights[2] = 5.0
-        criterion = nn.CrossEntropyLoss(ignore_index=ignore, weight=weights)
-        score = criterion(pred, gth)
-    else:
-        criterion = nn.BCEWithLogitsLoss(reduction='none')
-        score = torch.tensor(0.0, dtype=torch.float32).to(device)
-        if model_name == "EfficientNetb0_UNet3Plus":
-            loss_list=[]
-            w = [0.3, 0.2, 0.2, 0.2, 0.1]
-            for i in range(len(pred)):
-                loss = criterion(pred[i].squeeze(1), gth.float())
-                mask = (gth != ignore).float()
-                valid_loss = loss * mask
-                score = valid_loss.sum() / mask.sum()
-                loss_list.append(score)
-            for i in range(len(loss_list)):
-                score += loss_list[i] * w[i]
-        else:
-            loss = criterion(pred.squeeze(1), gth.float())
-            mask = (gth != ignore).float()
-            valid_loss = loss * mask
-            score = valid_loss.sum() / mask.sum()
-
-    return score
 
 
 def miou_cal(model_name, pred, gth: torch.Tensor, classes: int, ignore: int, device):

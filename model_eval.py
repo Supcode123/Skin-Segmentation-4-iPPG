@@ -10,7 +10,7 @@ from code_projects.data.dataLoader import Dataload
 from models.Archi import model_select
 from code_projects.utils.before_train import parse_eval_args, create_logger
 from code_projects.utils.visualization_plot import create_fig_test, create_fig, denormalize
-from code_projects.utils.score_cal import miou_cal, Dice_cal, compute_assd
+from code_projects.utils.metrics_cal import miou_cal, Dice_cal, compute_assd, accuracy
 
 
 def main():
@@ -55,7 +55,7 @@ def main():
     results = []
     iou = []
     dice = []
-    assd=[]
+    acc=[]
 
     with torch.no_grad():
 
@@ -68,6 +68,8 @@ def main():
             iou.append(iou_score.item())
             dice_score = Dice_cal(model_info['NAME'], pred, label, data_info['CLASSES'], 255, args.device)
             dice.append(dice_score.item())
+            acc_score = accuracy(model_info['NAME'], pred, label, data_info['CLASSES'], 255, args.device)
+            acc.append(acc_score)
             #prob = torch.sigmoid(pred).squeeze(1)
             #assd_score = compute_assd(label, pred, model_info['NAME'],data_info['CLASSES'])
             #assd.append(assd_score)
@@ -79,11 +81,12 @@ def main():
         iou_std = np.std(iou)
         mdice=np.mean(dice)
         dice_std = np.std(dice)
+        macc = np.mean(acc)
         #massd = np.mean(assd)
         #assd_std = np.std(assd)
-        print("the len of assd_list: ", len(assd))
-        message = '| mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f' \
-                  '| ' % (miou, iou_std, mdice, dice_std)
+        #print("the len of assd_list: ", len(assd))
+        message = 'PA: %3.6f | mIoU(skin): %3.6f, Std: %3.6f | Dice(skin): %3.6f, Std: %3.6f|'\
+                  % (macc, miou, iou_std, mdice, dice_std)
         print(message)
         logger.info(message)
         if train_info['BATCH_SIZE'] == 1:

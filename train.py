@@ -2,19 +2,16 @@ import os
 import time
 
 import torch
-import torch.nn as nn
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from code_projects.data.dataLoader import Dataload
-from code_projects.data.experiments import remap_label
 from models.Archi import model_select
 from code_projects.utils.before_train import parse_train_args, get_train_info, \
     create_optimizer, create_scheduler
 from code_projects.utils.visualization_plot import create_fig, denormalize
 from code_projects.utils.early_stopping import EarlyStopping
-from code_projects.utils.score_cal import accuracy, loss_cal, miou_cal, Dice_cal
-from code_projects.utils.csv_create import csv_file
-
+from code_projects.utils.metrics_cal import accuracy, miou_cal, Dice_cal
+from code_projects.utils.losses.loss_cal import final_loss
 
 
 def main():
@@ -38,16 +35,6 @@ def main():
     model = model_select(model_config, data_config).to(device)
 
     optimizer = create_optimizer(model, train_config)
-
-    # criterion = nn.CrossEntropyLoss(ignore_index=train_config['IGNORE_LABEL'])
-    # tv_loss = FocalTverskyLoss(num_classes=train_dataset.num_classes).to(device)
-
-    # acc = MulticlassAccuracy(num_classes=train_dataset.num_classes,
-                                #ignore_index=train_config['IGNORE_LABEL']).to(device)
-    # class_miou = MulticlassJaccardIndex(num_classes=train_dataset.num_classes,
-                                        # ignore_index=255, average='none').to(device)
-    # if train_dataset.num_classes  == 2:
-    #    acc = BinaryAccuracy(ignore_index=train_config['IGNORE_LABEL']).to(device)
     scheduler = create_scheduler(optimizer, train_config)
 
     # Log graph of models
@@ -80,15 +67,17 @@ def main():
 
         model.train()
         pbar = tqdm(train_dataloader)
-
+        lambda_ce_bce = max(0.5, 1.0 - 0.5 * ((epoch + 1) / 80))
+        lambda_lovasz = 1.0 - lambda_ce_bce
         for train_step, (sample, label, _) in enumerate(pbar, start=1):
             pbar.set_description(f"epoch: {epoch + 1}/{num_epochs}")
             sample, label = sample.to(device), label.to(device)
             optimizer.zero_grad()
             train_pred = model(sample)
-            batch_loss = loss_cal(model_config['NAME'], train_pred, label,
-                                  data_config['CLASSES'], train_config["IGNORE_LABEL"],
-                                  device)
+            batch_loss = final_loss(model_config['NAME'], train_pred, label,
+                                    data_config['CLASSES'], 255,
+                                    lambda_ce_bce,lambda_lovasz,device)
+
             batch_loss.backward()
             optimizer.step()
             with torch.no_grad():
@@ -109,12 +98,13 @@ def main():
                 # print(f"Validation step: {val_step}")
                 sample, label = sample.to(device), label.to(device)
                 val_pred = model(sample)
-                batch_loss = loss_cal(model_config['NAME'], val_pred, label,
-                                      data_config['CLASSES'], train_config["IGNORE_LABEL"], device)
+                batch_loss = final_loss(model_config['NAME'], val_pred, label,
+                                        data_config['CLASSES'], 255,
+                                        lambda_ce_bce,lambda_lovasz,device)
+
                 val_accuracy = accuracy(model_config['NAME'], val_pred,
                                                            label, data_config['CLASSES'], 255, device)
                 val_acc += val_accuracy.item()
-                # val_skin_acc += val_skin_accuracy.item()
                 val_loss += batch_loss.item()
                 miou_score = miou_cal(model_config['NAME'], val_pred,
                                                  label, data_config['CLASSES'], 255, device)
@@ -122,7 +112,6 @@ def main():
                 dice = Dice_cal(model_config['NAME'], val_pred, label, data_config['CLASSES'], 255, device)
                 val_dice += dice.item()
                 val_miou += miou_score.item()
-                # val_skin_miou += skin_miou.item()
 
             message = '[%03d/%03d] %2.2f sec(s) lr: %f Train Acc: %3.6f Loss: %3.6f |' \
                       ' Val Acc: %3.6f Loss: %3.6f M-IoU: %3.6f Dice(skin): %3.6f'% \
