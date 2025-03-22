@@ -64,11 +64,11 @@ def main():
         val_acc = 0.
         val_loss = 0.
         val_dice = 0.
-
+        lambda_ce_bce, lambda_lovasz = 1.0, 0.0
         model.train()
         pbar = tqdm(train_dataloader)
-        lambda_ce_bce = max(0.5, 1.0 - 0.5 * ((epoch + 1) / 80))
-        lambda_lovasz = 1.0 - lambda_ce_bce
+        if val_miou > 0.85:
+            lambda_ce_bce, lambda_lovasz = 0.6, 0.4  # CE + Lovász
         for train_step, (sample, label, _) in enumerate(pbar, start=1):
             pbar.set_description(f"epoch: {epoch + 1}/{num_epochs}")
             sample, label = sample.to(device), label.to(device)

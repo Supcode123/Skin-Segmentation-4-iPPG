@@ -85,28 +85,28 @@ def remap_original(mask):
         15: [15],
         16: [16],
         17: [17],
-        # 18: [18],
+        18: [18],
     }
     classes_exp = {
-        # 0: 'Background',
-        0: 'Skin',
-        1: 'Nose',
-        2: 'Right_Eye',
-        3: 'Left_Eye',
-        4: 'Right_Brow',
-        5: 'Left_Brow',
-        6: 'Right_Ear',
-        7: 'Left_Ear',
-        8: 'Mouth_Interior',
-        9: 'Top_Lip',
-        10: 'Bottom_Lip',
-        11: 'Neck',
-        12: 'Hair',
-        13: 'Beard',
-        14: 'Clothing',
-        15: 'Glasses',
-        16: 'Headwear',
-        17: 'Facewear',
+        0: 'Background',
+        1: 'Skin',
+        2: 'Nose',
+        3: 'Right_Eye',
+        4: 'Left_Eye',
+        5: 'Right_Brow',
+        6: 'Left_Brow',
+        7: 'Right_Ear',
+        8: 'Left_Ear',
+        9: 'Mouth_Interior',
+        10: 'Top_Lip',
+        11: 'Bottom_Lip',
+        12: 'Neck',
+        13: 'Hair',
+        14: 'Beard',
+        15: 'Clothing',
+        16: 'Glasses',
+        17: 'Headwear',
+        18: 'Facewear',
     }
     colormap = get_remapped_colormap(class_remapping_exp)
     remapped_mask = remap_mask(mask, class_remapping=class_remapping_exp)
@@ -116,8 +116,8 @@ def remap_original(mask):
 def remap_simple(mask):
     """Remap mask which smplified classes"""
     class_remapping_exp = {
-         0: [0],
-         1: [1],
+         0: [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+         1: [1, 2],
         # 2: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
 
     }
