@@ -6,7 +6,7 @@ reference to https://github.com/qubvel-org/segmentation_models.pytorch/tree/main
 
 def efficientnetb0_unet(model_cfg, num_classes):
     if num_classes > 2:
-        cls = 19
+        cls = num_classes
     elif num_classes == 2:
         cls = 1
     else:

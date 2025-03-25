@@ -1,37 +1,109 @@
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
 
 
-def dice_coeff(prediction: torch.Tensor, target: torch.Tensor, ignore_index: int = 255,
-               smooth: float = 1.0) -> torch.Tensor:
+def make_one_hot(input, num_classes):
+    """Convert class index tensor to one hot encoding tensor.
+
+    Args:
+         input: A tensor of shape [N, H, W] containing class indices.
+         num_classes: Number of classes.
+    Returns:
+        A tensor of shape [N, num_classes, H, W] as one-hot encoded.
     """
-    Calculate the Dice coefficient, excluding ignored pixels (such as background).
-    :param prediction: predicted value, Tensor type.
-    :param target: true value, Tensor type.
-    :param ignore_index: category to be ignored, default is 0 (background).
-    :param smooth: smoothing constant, to prevent division by zero error, default is 1.
-    :return: Return the Dice coefficient.
+    shape = list(input.shape)
+    shape.insert(1, num_classes)  # Insert num_classes dimension at position 1
+    one_hot = torch.zeros(shape, dtype=torch.float32, device=input.device)
+    one_hot = one_hot.scatter_(1, input.unsqueeze(1), 1)
+    return one_hot
+
+
+class BinaryDiceLoss(nn.Module):
+    """Dice loss of binary class
+    Args:
+        smooth: A float number to smooth loss, and avoid NaN error, default: 1
+        p: Denominator value: \sum{x^p} + \sum{y^p}, default: 2
+        predict: A tensor of shape [N, *]
+        target: A tensor of shape same with predict
+        reduction: Reduction method to apply, return mean over batch if 'mean',
+            return sum if 'sum', return a tensor of shape [N,] if 'none'
+    Returns:
+        Loss tensor according to arg reduction
+    Raise:
+        Exception if unexpected reduction
     """
-    prediction = torch.sigmoid(prediction)
+    def __init__(self, smooth=1, p=2, reduction='mean', ignore_index=None, foreground_weight=6.5):
+        super(BinaryDiceLoss, self).__init__()
+        self.smooth = smooth
+        self.p = p
+        self.reduction = reduction
+        self.ignore_index = ignore_index
+        self.foreground_weight = foreground_weight
 
-    target_flat = target.view(-1)
-    prediction_flat = prediction.view(-1)
+    def forward(self, predict, target):
+        assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
+        if predict.shape[1] == 1:
+            predict = predict.squeeze(1)
 
-    # Exclude pixels with ignore_index
-    mask = target_flat != ignore_index
-    target_flat = target_flat[mask]
-    prediction_flat = prediction_flat[mask]
-    intersection = torch.sum(target_flat * prediction_flat)
-    return (2. * intersection + smooth) / (torch.sum(target_flat) + torch.sum(prediction_flat) + smooth)
+        if self.ignore_index is not None:
+            mask = target != self.ignore_index
+            predict = predict[mask]
+            target = target[mask]
+
+        predict = predict.contiguous().view(predict.shape[0], -1)
+        target = target.contiguous().view(target.shape[0], -1)
+
+        # Calculate foreground-weighted Dice Loss
+        weight_map = torch.ones_like(target)
+        weight_map[target == 1] = self.foreground_weight
+
+        num = torch.sum(weight_map * predict * target, dim=1) + self.smooth
+        den = torch.sum(weight_map * (predict.pow(self.p) + target.pow(self.p)), dim=1) + self.smooth
+
+        loss = 1 - num / den
+
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        elif self.reduction == 'none':
+            return loss
+        else:
+            raise Exception('Unexpected reduction {}'.format(self.reduction))
 
 
-def dice_loss(prediction: torch.Tensor, target: torch.Tensor, ignore_index: int = 0,
-              smooth: float = 1.0) -> torch.Tensor:
+class DiceLoss(nn.Module):
+    """Dice loss, need one hot encode input
+    Args:
+        weight: An array of shape [num_classes,]
+        ignore_index: class index to ignore
+        predict: A tensor of shape [N, C, *]
+        target: A tensor of same shape with predict
+        other args pass to BinaryDiceLoss
+    Return:
+        same as BinaryDiceLoss
     """
-    Calculate Dice Loss, excluding ignored pixels.
-    :param prediction: predicted value, Tensor type.
-    :param target: true value, Tensor type.
-    :param ignore_index: category to be ignored, default is 0 (background).
-    :param smooth: smoothing constant, prevent division by zero error, default is 1.
-    :return: Return Dice Loss (1 - Dice coefficient).
-    """
-    return 1 - dice_coeff(prediction, target, ignore_index, smooth)
+    def __init__(self, weight=None, ignore_index=None, **kwargs):
+        super(DiceLoss, self).__init__()
+        self.kwargs = kwargs
+        self.weight = weight
+        self.ignore_index = ignore_index
+
+    def forward(self, predict, target):
+        assert predict.shape == target.shape, 'predict & target shape do not match'
+        dice = BinaryDiceLoss(**self.kwargs)
+        total_loss = 0
+        predict = F.softmax(predict, dim=1)
+
+        for i in range(target.shape[1]):
+            if i != self.ignore_index:
+                dice_loss = dice(predict[:, i], target[:, i])
+                if self.weight is not None:
+                    assert self.weight.shape[0] == target.shape[1], \
+                        'Expect weight shape [{}], get[{}]'.format(target.shape[1], self.weight.shape[0])
+                    dice_loss *= self.weights[i]
+                total_loss += dice_loss
+
+        return total_loss/target.shape[1]

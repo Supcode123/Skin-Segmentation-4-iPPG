@@ -64,11 +64,22 @@ def main():
         val_acc = 0.
         val_loss = 0.
         val_dice = 0.
-        lambda_ce_bce, lambda_lovasz = 1.0, 0.0
+        lambda_ce_bce, lambda_lovasz, lambda_dice, = 1.0, 0.0, 0.0
         model.train()
         pbar = tqdm(train_dataloader)
-        if val_miou > 0.85:
-            lambda_ce_bce, lambda_lovasz = 0.6, 0.4  # CE + Lovász
+
+        if 0.8 < val_miou < 0.9 and data_config['CLASSES'] == 2:
+            alpha = (val_miou - 0.8) / (0.9 - 0.8)
+            lambda_ce_bce = 1.0 - alpha * 0.4  # lambda_ce_bce从1.0到0.6
+            lambda_dice = alpha * 0.4
+
+        if 0.8< val_miou < 0.9 and data_config['CLASSES'] > 2:
+            # CE + Lovász + dice
+            alpha = (val_miou - 0.8) / (0.9 - 0.8)
+            lambda_ce_bce = 1.0 - alpha * 0.5  # lambda_ce_bce从1.0到0.5
+            lambda_dice = alpha * 0.3
+            lambda_lovasz = alpha * 0.2
+
         for train_step, (sample, label, _) in enumerate(pbar, start=1):
             pbar.set_description(f"epoch: {epoch + 1}/{num_epochs}")
             sample, label = sample.to(device), label.to(device)
@@ -76,7 +87,7 @@ def main():
             train_pred = model(sample)
             batch_loss = final_loss(model_config['NAME'], train_pred, label,
                                     data_config['CLASSES'], 255,
-                                    lambda_ce_bce,lambda_lovasz,device)
+                                    lambda_ce_bce,lambda_lovasz,lambda_dice,device)
 
             batch_loss.backward()
             optimizer.step()
@@ -100,7 +111,7 @@ def main():
                 val_pred = model(sample)
                 batch_loss = final_loss(model_config['NAME'], val_pred, label,
                                         data_config['CLASSES'], 255,
-                                        lambda_ce_bce,lambda_lovasz,device)
+                                        lambda_ce_bce,lambda_lovasz,lambda_dice,device)
 
                 val_accuracy = accuracy(model_config['NAME'], val_pred,
                                                            label, data_config['CLASSES'], 255, device)

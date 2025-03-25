@@ -69,7 +69,7 @@ def main():
             dice_score = Dice_cal(model_info['NAME'], pred, label, data_info['CLASSES'], 255, args.device)
             dice.append(dice_score.item())
             acc_score = accuracy(model_info['NAME'], pred, label, data_info['CLASSES'], 255, args.device)
-            acc.append(acc_score)
+            acc.append(acc_score.item())
             #prob = torch.sigmoid(pred).squeeze(1)
             #assd_score = compute_assd(label, pred, model_info['NAME'],data_info['CLASSES'])
             #assd.append(assd_score)
