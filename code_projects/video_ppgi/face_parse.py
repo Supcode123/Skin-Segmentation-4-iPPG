@@ -5,7 +5,6 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 import mediapipe as mp
-import segmentation_models_pytorch as smp
 from tqdm import tqdm
 
 
@@ -92,30 +91,19 @@ def apply_bounding_box_mask(output: np.ndarray, bbox: tuple) -> np.ndarray:
     return output_with_bbox
 
 
-def segment_skin(face_img: List[np.ndarray], batch_size: int = 1):
-    """Using U-Net + EfficientNetB0 for skin segmentation"""
+def segment_skin(face_img: List[np.ndarray], model, batch_size: int = 1):
+    """sing U-Net + EfficientNetB0U for skin segmentation"""
     pred_list = []
     dataset = ImageDataset(face_img, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=2)
-
-    model = smp.Unet(
-        encoder_name='efficientnet-b0',
-        encoder_weights=None,
-        classes=1,
-        activation=None,
-        encoder_depth=5,
-        decoder_channels=[256, 128, 64, 32, 16]
-    ).to('cuda')
-    model.load_state_dict(
-        torch.load(r'C:\kshi\Skin-Segmentation-4-iPPG\log\model_checkpoint_2.pt',
-                   map_location='cuda'))
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8,
+                            drop_last=False)
     model.eval()
-
     with torch.no_grad():
-        pbar = tqdm(dataloader)
+        pbar = tqdm(dataloader, desc="Processing Batchs")
         for i, sample in enumerate(pbar, start=1):
             sample = sample.to("cuda" if torch.cuda.is_available() else "cpu")
             pred = model(sample)
-            pred_list.append(pred)
+            pred = list(pred)
+            pred_list.extend(pred)
         print(f"**** inference of {len(pred_list)} imgs done ")
     return pred_list

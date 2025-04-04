@@ -21,6 +21,7 @@ class Dataload():
                                      num_classes=self.data_info['CLASSES'],
                                      exp=self.data_info['EXP'],
                                      transform=pipeline(),
+                                     swin_unet = self.data_info['SWIN_UNET'],
                                      img_normalization=A.Normalize(mean=self.data_info['MEAN'],
                                                                    std=self.data_info['STD']),
                                      mode='train',
@@ -43,6 +44,7 @@ class Dataload():
                                    # transform=A.CenterCrop(width=224, height=224), # for Swin_Unet, synthetic dataset
                                    img_normalization=A.Normalize(mean=self.data_info['MEAN'],
                                                                  std=self.data_info['STD']),
+                                   swin_unet=self.data_info['SWIN_UNET'],
                                    mode='val',
                                    filter_mislabeled=self.data_info['FILTER_MISLABELED'])
 
@@ -64,6 +66,7 @@ class Dataload():
                                     transform=None,
                                     img_normalization=A.Normalize(mean=self.data_info['MEAN'],
                                                                   std=self.data_info['STD']),
+                                    swin_unet=self.data_info['SWIN_UNET'],
                                     mode='test',
                                     filter_mislabeled=self.data_info['FILTER_MISLABELED'])
         self.test_dataloader = DataLoader(self.test_dataset,
@@ -76,10 +79,22 @@ class Dataload():
         return self.test_dataset, self.test_dataloader
 
 # if __name__ == "__main__":
-#     data_path = "D:/sythetic_data/dataset_100/256,256"
-#     img_id = "000096"
-#     img_path = os.path.join(data_path, "test", "images", img_id + ".png")
-#     mask_path = os.path.join(data_path, "test", "labels", img_id + "_seg.png")
-#     mask2_path = os.path.join(data_path, "masks", img_id + "_seg.png")
-#     # plot_simple(img_path, mask2_path)
-#     plot_simple(img_path, mask_path)
+#     train_config = {
+#         "BATCH_SIZE": 6,
+#         "WORKERS": 8,
+#     }
+#     data_config = {
+#         "MEAN": [0.485, 0.456, 0.406],
+#         "STD": [0.229, 0.224, 0.225],
+#         "EXP": "EXP2",  # 你的实验设置
+#         "CLASSES": 2,  # 可能是二分类还是多分类的选择
+#         "SWIN_PADDING": True,  # 你的原配置里是 "Ture"，修正拼写错误
+#         'FILTER_MISLABELED': False
+# }
+#     train_dataset, train_dataloader, val_dataset, val_dataloader = Dataload(
+#         root=r"D:/MA_DATA/sythetic_data/dataset_100/256x256",
+#         train_info=train_config,
+#         data_info=data_config).get_dataloaders()
+#     for i, (img, mask, _) in enumerate(train_dataloader):
+#         if i < 2:  # 只打印前5个，防止输出过多
+#             print(f"Batch {i}: img shape = {img.shape}, mask shape = {mask.shape}")

@@ -2,13 +2,14 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+import albumentations as A
 
 from data.transfrom_pipeline import pipeline
 
-img = cv2.imread(r"D:\sythetic_data\dataset_100\256x256\train\images\000061.png")[:, :, ::-1]
-mask = np.array(Image.open(r"D:\sythetic_data\dataset_100\256x256\train\labels\000061_seg.png"))
+img = cv2.imread(r"D:\MA_DATA\sythetic_data\dataset_100\256x256\images\000020.png")[:, :, ::-1]
+mask = np.array(Image.open(r"D:\MA_DATA\sythetic_data\dataset_100\256x256\masks\000001_seg.png"))
 
-transform = pipeline()
+transform=A.CenterCrop(width=224, height=224)
 augmented = transform(image=img, mask=mask)
 aug_img = augmented['image']
 aug_mask = augmented['mask']

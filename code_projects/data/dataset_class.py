@@ -1,9 +1,10 @@
 import os
 import torch
+from torchvision import transforms
 import torch.utils.data as data
 import numpy as np
 from albumentations.pytorch.functional import img_to_tensor
-from PIL import Image
+from PIL import Image, ImageOps
 
 from code_projects.data.experiments import EXP1,EXP2,EXP_
 
@@ -26,6 +27,7 @@ class Dataset(data.Dataset):
                  # classes: int,
                  transform=None,
                  img_normalization=None,
+                 swin_unet: bool = False,
                  num_classes : int = 2,
                  exp: str = "EXP2",
                  mode: str = "train",
@@ -50,6 +52,8 @@ class Dataset(data.Dataset):
            self.EXP = EXP_
         self.normalization = img_normalization
         self.transform = transform
+        self.swin_unet = swin_unet
+        self.center_crop = transforms.CenterCrop((224, 224))
         self.filter_mislabeled = filter_mislabeled
         self.mislabeled_samples = []
         mislabeled_file_path = './mislabeled_files.txt'
@@ -106,10 +110,16 @@ class Dataset(data.Dataset):
 
     def __getitem__(self, index: int) -> (torch.Tensor, torch.Tensor, str):
         sample = self.sample_list[index]
-        img = np.array(Image.open(sample["img"]))
-        mask = np.array(Image.open(sample["mask"]))
+        img = Image.open(sample["img"])
+        mask = Image.open(sample["mask"])
         file_name = sample["name"]
 
+        if self.swin_unet:
+            # padding: 256x256 -> 224x224
+            img = self.center_crop(img)
+            mask = self.center_crop(mask)
+        img = np.array(img)
+        mask = np.array(mask)
         if self.transform is not None:
             # To ensure the same transformation is applied to img + mask
             data = self.transform(image=img, mask=mask)

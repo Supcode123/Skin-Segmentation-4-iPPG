@@ -47,7 +47,7 @@ def main():
     print("##### Load model etc.")
 
     model = model_select(model_info,data_info).to(args.device)
-    model.load_state_dict(torch.load(os.path.join(args.chkpt_path, "model_checkpoint_18.pt"), map_location=args.device))
+    model.load_state_dict(torch.load(os.path.join(args.chkpt_path, "model_checkpoint.pt"), map_location=args.device))
     model.eval()
 
 

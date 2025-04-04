@@ -22,6 +22,29 @@ def filter_signal(sig:np.ndarray,fs:float,cutoff_freqs :List[float],order:int=10
     return filtered
 
 
+def temporal_filtering(segmentation_masks, k: int=5):
+    """
+    Temporally filter each pixel and smooth the labels using the AND operator.
+
+    Parameters:
+    segmentation_masks (list of np.array): Each element is a segmentation result of shape (height, width)
+    k (int): size of the temporal window
+
+    Returns:
+    List[np.array]: smoothed segmentation result of shape (num_frames, height, width)
+    """
+    print(f"temporal filtering start...,window size = {k}")
+    T = len(segmentation_masks)
+    H, W = segmentation_masks[0].shape
+    filtered_seg = [np.zeros((H, W), dtype=np.uint8) for _ in range(T)]
+
+    for t in range(k-1, T):
+        window_stack = np.stack(segmentation_masks[t - k + 1:t + 1], axis=0)  # shape: (k, H, W)
+        filtered_seg[t] = np.where(np.all(window_stack == 255, axis=0), 255, 0)
+
+    return filtered_seg
+
+
 def compute_power_spectrum(input_signal:np.ndarray,fs:float,zero_pad:int=None) -> Tuple[np.ndarray,np.ndarray]:
     """Computes Power spectrum based on Welchs method and a Hamming Window
 
