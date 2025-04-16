@@ -4,7 +4,7 @@ from torchvision import transforms
 import torch.utils.data as data
 import numpy as np
 from albumentations.pytorch.functional import img_to_tensor
-from PIL import Image, ImageOps
+from PIL import Image
 
 from code_projects.data.experiments import EXP1,EXP2,EXP_
 
@@ -28,7 +28,7 @@ class Dataset(data.Dataset):
                  transform=None,
                  img_normalization=None,
                  swin_unet: bool = False,
-                 num_classes : int = 2,
+                 num_classes: int = 2,
                  exp: str = "EXP2",
                  mode: str = "train",
                  filter_mislabeled: bool = False):

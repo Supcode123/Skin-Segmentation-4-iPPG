@@ -21,7 +21,7 @@ class Dataload():
                                      num_classes=self.data_info['CLASSES'],
                                      exp=self.data_info['EXP'],
                                      transform=pipeline(),
-                                     swin_unet = self.data_info['SWIN_UNET'],
+                                     swin_unet=self.data_info['SWIN_UNET'],
                                      img_normalization=A.Normalize(mean=self.data_info['MEAN'],
                                                                    std=self.data_info['STD']),
                                      mode='train',
@@ -86,9 +86,9 @@ class Dataload():
 #     data_config = {
 #         "MEAN": [0.485, 0.456, 0.406],
 #         "STD": [0.229, 0.224, 0.225],
-#         "EXP": "EXP2",  # 你的实验设置
-#         "CLASSES": 2,  # 可能是二分类还是多分类的选择
-#         "SWIN_PADDING": True,  # 你的原配置里是 "Ture"，修正拼写错误
+#         "EXP": "EXP1",  # 你的实验设置
+#         "CLASSES": 18,  # 可能是二分类还是多分类的选择
+#         "SWIN_UNET": False,  # 你的原配置里是 "Ture"，修正拼写错误
 #         'FILTER_MISLABELED': False
 # }
 #     train_dataset, train_dataloader, val_dataset, val_dataloader = Dataload(

@@ -10,4 +10,4 @@ EXP: EXP2
    # EXP1  -synthetic dataset with 18 labels,
 
 CLASSES: 2 #2,19
-SWIN_UNET: True
+SWIN_UNET: False
