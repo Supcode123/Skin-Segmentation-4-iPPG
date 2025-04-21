@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
-
+from torch import nn
 
 with open(r'D:\MA_DATA\video\project1\ground_truth.txt', "r") as f:
     lines = f.readlines()

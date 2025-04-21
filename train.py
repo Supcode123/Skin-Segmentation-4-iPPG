@@ -138,6 +138,16 @@ def main():
             print(message)
             logger.info(message)
 
+            tb_writer.add_scalar('train/loss', train_loss / len(train_dataloader), epoch + 1)
+            # tb_writer.add_scalar('train/cross_entropy(last step)', ce_score.item(), epoch)
+            tb_writer.add_scalar('train/accuracy', train_acc / len(train_dataloader), epoch + 1)
+            tb_writer.add_scalar('train/learning_rate', optimizer.param_groups[0]['lr'], epoch + 1)
+            tb_writer.add_scalar('val/loss', val_loss / len(val_dataloader), epoch + 1)
+            tb_writer.add_scalar('val/accuracy', val_acc / len(val_dataloader), epoch + 1)
+            tb_writer.add_scalar('val/mIoU', val_miou / len(val_dataloader), epoch + 1)
+            tb_writer.add_scalar('val/Dice', val_dice / len(val_dataloader), epoch + 1)
+
+#  ********************** Early Stopping *******************
             early_stopping(val_miou / len(val_dataloader))
             if early_stopping.early_stop:
                 print(f"Training stopped early at epoch {epoch + 1}")
@@ -145,15 +155,6 @@ def main():
             current_score = val_miou / len(val_dataloader)
             if current_score > best_val:  # improve,better
                 best_val = current_score
-
-                tb_writer.add_scalar('train/loss', train_loss / len(train_dataloader), epoch + 1)
-                # tb_writer.add_scalar('train/cross_entropy(last step)', ce_score.item(), epoch)
-                tb_writer.add_scalar('train/accuracy', train_acc / len(train_dataloader), epoch + 1)
-                tb_writer.add_scalar('train/learning_rate', optimizer.param_groups[0]['lr'], epoch + 1)
-                tb_writer.add_scalar('val/loss', val_loss / len(val_dataloader), epoch + 1)
-                tb_writer.add_scalar('val/accuracy', val_acc / len(val_dataloader), epoch + 1)
-                tb_writer.add_scalar('val/mIoU', val_miou / len(val_dataloader), epoch + 1)
-                tb_writer.add_scalar('val/Dice', val_dice / len(val_dataloader), epoch + 1)
 
                 # save the best models
                 print("save models: Processing...")
