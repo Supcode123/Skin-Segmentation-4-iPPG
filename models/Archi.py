@@ -11,7 +11,7 @@ def model_select(model_cfg: dict, data_cfg: dict):
         return efficientnetb0_unet(model_cfg, data_cfg['CLASSES'])
 
     elif model_cfg['NAME'] == "UnetPlusPlus":
-        return unet2plus(model_cfg)
+        return unet2plus(model_cfg, data_cfg['CLASSES'])
 
     elif model_cfg['NAME'] == "EfficientNetb0_UNet3Plus":
         return UNet_3Plus_DeepSup(model_cfg)

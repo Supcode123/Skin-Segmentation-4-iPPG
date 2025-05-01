@@ -31,7 +31,7 @@ def pipeline():
         RandomGrayScale(p=0.2),
 
         Wrinkles(contrast_factor=(1.0, 1.2),p=0.3),
-
+        A.MotionBlur(blur_limit=(3, 7), p=0.3),
         # # Randomly adjust brightness and contrast
 
         #A.ColorJitter(brightness=(0.5, 2.0), contrast=0, saturation=0, hue=0, p=1.0),
@@ -48,7 +48,6 @@ def pipeline():
 
         # # ** Gamma transformation (simulating underexposure and overexposure) **
         A.RandomGamma(gamma_limit=(10, 150), p=0.8),
-
 
         # # Randomly apply Gaussian noise (to simulate ambient light interference)
         A.GaussNoise(

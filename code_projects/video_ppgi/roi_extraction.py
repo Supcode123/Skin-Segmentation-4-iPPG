@@ -10,17 +10,19 @@ def extract_roi(frames: List[np.ndarray], pred_masks: List[torch.Tensor]):
     rois = list()
     for f_i, (frame, pred_mask) in enumerate(zip(frames,pred_masks)):
 
-        # pred = torch.softmax(pred_mask, dim=1)  # [batch_size, num_classes, H, W]
-        # pred = pred.argmax(1).squeeze().cpu().numpy()
-        pred = (torch.sigmoid(pred_mask) > 0.5).int().squeeze().cpu().numpy()
+        #pred = torch.softmax(pred_mask, dim=1)  # [batch_size, num_classes, H, W]
+        pred = pred_mask.argmax(0).squeeze().cpu().numpy()
+        #pred = (torch.sigmoid(pred_mask) > 0.5).int().squeeze().cpu().numpy()
         # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
         # opened = cv2.morphologyEx(pred.astype(np.uint8), cv2.MORPH_OPEN, kernel)
-        kernel_erode = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+
+        #kernel_erode = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
         #kernel_erode = np.ones((3, 3), np.uint8)
-        erode = cv2.erode(pred.astype(np.uint8), kernel_erode, iterations=1)  # dilation
-        mask_face = erode
+        #erode = cv2.erode(pred.astype(np.uint8), kernel_erode, iterations=1)  # dilation
+       # mask_face = erode
+
         # mask_face = np.isin(erode, 1).astype(np.uint8)
-        # mask_face = np.isin(face_area, [0, 1]).astype(np.uint8)
+        mask_face = np.isin(pred, [1, 2]).astype(np.uint8)
         # mask_eyes = np.isin(face_area, [2, 3]).astype(np.uint8)
         # mask_eyebrows = np.isin(face_area, [4, 5]).astype(np.uint8)
         #

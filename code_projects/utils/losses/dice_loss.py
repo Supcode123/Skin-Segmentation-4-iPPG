@@ -4,17 +4,21 @@ import torch.nn.functional as F
 import numpy as np
 
 
-def make_one_hot(input, num_classes):
+def make_one_hot(input, num_classes, ignore_index: int = None):
     """Convert class index tensor to one hot encoding tensor.
 
     Args:
          input: A tensor of shape [N, H, W] containing class indices.
          num_classes: Number of classes.
+         ignore_index: Optional integer. Class index to ignore.
     Returns:
         A tensor of shape [N, num_classes, H, W] as one-hot encoded.
     """
+    if ignore_index is not None:
+        input = input.clone()
+        input[input == ignore_index] = int(num_classes)
     shape = list(input.shape)
-    shape.insert(1, num_classes)  # Insert num_classes dimension at position 1
+    shape.insert(1, num_classes+1)  # Insert num_classes dimension at position 1
     one_hot = torch.zeros(shape, dtype=torch.float32, device=input.device)
     one_hot = one_hot.scatter_(1, input.unsqueeze(1), 1)
     return one_hot
@@ -78,7 +82,7 @@ class DiceLoss(nn.Module):
     """Dice loss, need one hot encode input
     Args:
         weight: An array of shape [num_classes,]
-        ignore_index: class index to ignore
+        ignore_index: class index(cls) to ignore
         predict: A tensor of shape [N, C, *]
         target: A tensor of same shape with predict
         other args pass to BinaryDiceLoss
@@ -92,18 +96,18 @@ class DiceLoss(nn.Module):
         self.ignore_index = ignore_index
 
     def forward(self, predict, target):
-        assert predict.shape == target.shape, 'predict & target shape do not match'
+        assert predict.shape[1] == target.shape[1] - 1, 'predict & target shape do not match'
         dice = BinaryDiceLoss(**self.kwargs)
         total_loss = 0
         predict = F.softmax(predict, dim=1)
 
-        for i in range(target.shape[1]):
+        for i in range(target.shape[1] - 1):
             if i != self.ignore_index:
                 dice_loss = dice(predict[:, i], target[:, i])
                 if self.weight is not None:
-                    assert self.weight.shape[0] == target.shape[1], \
+                    assert self.weight.shape[0] == target.shape[1] - 1, \
                         'Expect weight shape [{}], get[{}]'.format(target.shape[1], self.weight.shape[0])
-                    dice_loss *= self.weights[i]
+                    dice_loss *= self.weight[i]
                 total_loss += dice_loss
 
         return total_loss/target.shape[1]

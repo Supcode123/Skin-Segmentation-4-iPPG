@@ -12,6 +12,7 @@ from code_projects.video_ppgi.Model import model_load
 from tqdm import tqdm
 
 from code_projects.video_ppgi.metrics import calculate_metric_per_video, calculate_resuls
+from code_projects.video_ppgi.ppg_wave_figure import wave_figure
 
 
 def get_video_project_dict(root_dir):
@@ -115,6 +116,7 @@ if __name__ == "__main__":
     gt_hr_peak_all = list()
     SNR_peak_all = list()
     SNR_fft_all = list()
+    i = 0
     # data_path = r'S:\XDatabase\PPGI\UBFC\DATASET_2\subject1\vid.avi'
     data_dir = r'D:\MA_DATA\video'
     projects = get_video_project_dict(data_dir)
@@ -122,6 +124,7 @@ if __name__ == "__main__":
     for key in tqdm(projects.keys(), desc="Processing Projects"):
         data_path = os.path.join(data_dir, projects[key], "vid.avi")
         frames, fs = load_video(projects[key],data_path)
+        #test_frame = frames[:1]
         cropped_resized_frame = crop_and_resize(frames)
         pred = segment_skin(cropped_resized_frame, model, batch_size=100)
         rois = extract_roi(cropped_resized_frame, pred)
@@ -133,32 +136,32 @@ if __name__ == "__main__":
         bvp_signal = extract_bvp_POS(rgbt_signal, fs).reshape(-1)
         # bvp_filtered = filter_signal(bvp_signal, fs, cutoff_freqs=[0.4, 4])
         ppg_labels = load_labels(data_dir, projects[key], len(frames))
-
-        hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(standardized_label(bvp_signal),
-                                                standardized_label(ppg_labels), fs=fs, hr_method='FFT')
+        # if i == 0:
+        #     # output ppg wave
+        #   wave_figure(bvp_signal, ppg_labels, fs, len(frames))
+        hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal,
+                                                ppg_labels, fs=fs, hr_method='FFT')
         gt_hr_peak_all.append(hr_label_fft)
         predict_hr_peak_all.append(hr_pred_fft)
         SNR_peak_all.append(SNR_fft)
-        hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(standardized_label(bvp_signal),
-                                                standardized_label(ppg_labels), fs=fs, hr_method='Peak')
+        hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal,
+                                                ppg_labels, fs=fs, hr_method='Peak')
         gt_hr_peak_all.append(hr_label_peak)
         predict_hr_peak_all.append(hr_pred_peak)
         SNR_peak_all.append(SNR_peak)
+        i += 1
 
     calculate_resuls(gt_hr_fft_all, predict_hr_fft_all, SNR_fft_all, method="FFT")
     calculate_resuls(gt_hr_peak_all, predict_hr_peak_all, SNR_peak_all, method="Peak")
 
 
-    # test_frame = frames[:1]
 
-
-
-    # x = np.unique(rois[0])
-    # overlayed_roi = overlay(cropped_resized_frame[0].astype(np.uint8), rois[0], (0, 255, 0), 0.3)
-    # plt.figure()
-    # plt.imshow(overlayed_roi)
-    # #plt.savefig("overlayed_roi.png", bbox_inches="tight", pad_inches=0, dpi=300)
-    # plt.show()
+        # #x = np.unique(rois[0])
+        # overlayed_roi = overlay(cropped_resized_frame[0].astype(np.uint8), rois[0], (0, 255, 0), 0.3)
+        # plt.figure()
+        # plt.imshow(overlayed_roi)
+        # #plt.savefig("overlayed_roi.png", bbox_inches="tight", pad_inches=0, dpi=300)
+        # plt.show()
 
 
     # Compute the heart rate

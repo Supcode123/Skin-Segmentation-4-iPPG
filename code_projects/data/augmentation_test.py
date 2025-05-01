@@ -6,10 +6,10 @@ import albumentations as A
 
 from data.transfrom_pipeline import pipeline
 
-img = cv2.imread(r"D:\MA_DATA\sythetic_data\dataset_100\256x256\images\000020.png")[:, :, ::-1]
-mask = np.array(Image.open(r"D:\MA_DATA\sythetic_data\dataset_100\256x256\masks\000001_seg.png"))
+img = cv2.imread(r"D:\MA_DATA\sythetic_data\dataset_100\image\000050.png")[:, :, ::-1]
+mask = np.array(Image.open(r"D:\MA_DATA\sythetic_data\dataset_100\label\000001_seg.png"))
 
-transform=A.CenterCrop(width=224, height=224)
+transform=A.CenterCrop(width=350, height=350)
 augmented = transform(image=img, mask=mask)
 aug_img = augmented['image']
 aug_mask = augmented['mask']
