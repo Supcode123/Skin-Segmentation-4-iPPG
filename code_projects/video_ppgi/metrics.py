@@ -10,6 +10,8 @@ def _next_power_of_2(x):
     """Calculate the nearest power of 2."""
     return 1 if x == 0 else 2 ** (x - 1).bit_length()
 
+def normalize_signal(signal):
+    return (signal - np.mean(signal)) / np.std(signal)
 
 def _detrend(input_signal, lambda_value):
     """Detrend PPG signal."""
@@ -106,8 +108,8 @@ def _calculate_SNR(pred_ppg_signal, hr_label, fs=30, low_pass=0.6, high_pass=3.3
 def calculate_metric_per_video(predictions, labels, fs=30, use_bandpass=True, hr_method='FFT'):
     """Calculate video-level HR and SNR"""
     assert len(predictions) == len(labels), "The length of the prediction and labels don't match "
-    predictions = _detrend(predictions, 100)
-    labels = _detrend(labels, 100)
+    predictions = normalize_signal(_detrend(predictions, 100))
+    labels = normalize_signal(_detrend(labels, 100))
 
     if use_bandpass:
         # bandpass filter between [0.75, 2.5] Hz, equals [45, 150] beats per min
@@ -119,7 +121,7 @@ def calculate_metric_per_video(predictions, labels, fs=30, use_bandpass=True, hr
     if hr_method == 'FFT':
         hr_pred = _calculate_fft_hr(predictions, fs=fs)
         hr_label = _calculate_fft_hr(labels, fs=fs)
-    elif hr_method == 'Peak':
+    if hr_method == 'Peak':
         hr_pred = _calculate_peak_hr(predictions, fs=fs)
         hr_label = _calculate_peak_hr(labels, fs=fs)
     else:

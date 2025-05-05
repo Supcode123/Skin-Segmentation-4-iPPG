@@ -5,18 +5,12 @@ reference to https://github.com/qubvel-org/segmentation_models.pytorch/tree/main
 
 
 def unet2plus(model_cfg,num_classes):
-    if num_classes > 2:
-        cls = num_classes
-    elif num_classes == 2:
-        cls = 1
-    else:
-        raise ValueError
     backbone = model_cfg['BACKBONE']
     head = model_cfg['HEAD']
     model = getattr(smp, head)(
         encoder_name=backbone,
         encoder_weights=model_cfg['ENCODER_WEIGHTS'],
-        classes=cls,
+        classes=num_classes,
         activation=None,
         encoder_depth=model_cfg['ENCODER_DEPTH'],
         decoder_channels=model_cfg['DECODER_CHANNELS']

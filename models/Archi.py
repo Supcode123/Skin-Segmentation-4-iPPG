@@ -7,11 +7,17 @@ from models.UNet3Plus.unet3plus import UNet_3Plus_DeepSup
 
 
 def model_select(model_cfg: dict, data_cfg: dict):
+    if data_cfg['CLASSES'] == 2:
+        cls = 1
+    elif data_cfg['CLASSES'] > 2:
+        cls = data_cfg['CLASSES']
+    else:
+        raise ValueError
     if model_cfg['NAME'] == "EfficientNetb0_UNet":
-        return efficientnetb0_unet(model_cfg, data_cfg['CLASSES'])
+        return efficientnetb0_unet(model_cfg, cls)
 
     elif model_cfg['NAME'] == "UnetPlusPlus":
-        return unet2plus(model_cfg, data_cfg['CLASSES'])
+        return unet2plus(model_cfg, cls)
 
     elif model_cfg['NAME'] == "EfficientNetb0_UNet3Plus":
         return UNet_3Plus_DeepSup(model_cfg)
@@ -20,6 +26,6 @@ def model_select(model_cfg: dict, data_cfg: dict):
     #     return seg_next(model_cfg)
 
     elif model_cfg['NAME'] == "Swin_Unet":
-        net = SwinUnet(model_cfg, num_classes=1)
+        net = SwinUnet(model_cfg, num_classes=cls)
         net.load_from(model_cfg)
         return net

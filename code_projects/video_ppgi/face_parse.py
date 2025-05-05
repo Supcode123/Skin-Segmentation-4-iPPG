@@ -44,28 +44,68 @@ transform = transforms.Compose([
 ])
 
 
-def detect_face(frame: np.ndarray):
+def detect_and_crop_faces(frames: List[np.ndarray]):
     """Use BlazeFace to perform face detection and return the cropped face area"""
+
+    cropped_faces = []
     mp_face_detection = mp.solutions.face_detection
 
-
     with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detection:
-        results = face_detection.process(frame)
+        for frame in frames:
+            img_h, img_w, _ = frame.shape
+            crop_size = 256
+            half_crop = crop_size // 2
 
-        if results.detections:
-            for detection in results.detections:
+            # Skip frames that are too small to crop 256×256
+            if img_h < crop_size or img_w < crop_size:
+                print("Warning: Frame too small, skipped.")
+                continue
+
+            # Face detection
+            results = face_detection.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+            if results.detections:
+                detection = results.detections[0]  # Only use the first detected face
                 bboxC = detection.location_data.relative_bounding_box
-                h, w, _ = frame.shape
-                x, y, w, h = int(bboxC.xmin * w), int(bboxC.ymin * h), int(bboxC.width * w), int(bboxC.height * h)
 
-                # Make sure the cropped area does not extend beyond the image boundaries
-                x, y, w, h = max(0, x), max(0, y - int(0.07 * h)) , min(w, frame.shape[1] - x), min(h, frame.shape[0] - y)
-                # face_crop = frame[y:y + h, x:x + w]
-                return (x, y, w, h)
+                x_center = int((bboxC.xmin + bboxC.width / 2) * img_w)
+                y_center = int((bboxC.ymin + bboxC.height / 2) * img_h) - 30
 
-    print("Warning: No face detected in the frame!")
-    return None  # No face detected
+                # Initial crop box
+                x1 = x_center - half_crop
+                y1 = y_center - half_crop
+                x2 = x_center + half_crop
+                y2 = y_center + half_crop
 
+                # Adjust crop box if it goes beyond image borders
+                if x1 < 0:
+                    x2 += -x1
+                    x1 = 0
+                if x2 > img_w:
+                    diff = x2 - img_w
+                    x1 -= diff
+                    x2 = img_w
+                    x1 = max(0, x1)
+
+                if y1 < 0:
+                    y2 += -y1
+                    y1 = 0
+                if y2 > img_h:
+                    diff = y2 - img_h
+                    y1 -= diff
+                    y2 = img_h
+                    y1 = max(0, y1)
+
+                crop = frame[y1:y2, x1:x2]
+
+                if crop.shape[0] == 256 and crop.shape[1] == 256:
+                    cropped_faces.append(crop)
+                else:
+                    print("Warning: Cropped region not 256x256 after adjustment, skipped.")
+            else:
+                print("Warning: No face detected, skipped.")
+
+        return cropped_faces
 
 def apply_bounding_box_mask(output: np.ndarray, bbox: tuple) -> np.ndarray:
     """
