@@ -27,22 +27,16 @@ def get_video_project_dict(root_dir):
     return project_dict
 
 
-def load_labels_time(root_dir, project, num, bad_frame_ids=None):
+def load_labels_time(root_dir, project, num):
     gt_path = os.path.join(root_dir, project, "ground_truth.txt")
     with open(gt_path, 'r') as file:
         lines = file.readlines()
     labels = lines[0].strip()
-    timestamps = lines[2].strip()
-    labels_array = np.array(labels.split(), dtype=float)
-    timestamps = np.array(timestamps.split(), dtype=float)
-    if bad_frame_ids:
-        labels_array = np.delete(labels_array, bad_frame_ids)
-        timestamps = np.delete(timestamps, bad_frame_ids)
-    assert len(labels_array) == len(timestamps), f" labels ({len(labels_array)}) " \
-                                     f" match the timestamps({timestamps})"
-    assert len(labels_array) == num, f"The number of labels ({len(labels_array)}) " \
-                                     f"does not match the number of valid frames ({num})"
-
+    times = lines[2].strip()
+    assert len(labels) == len(times), f" labels ({len(labels)}) " \
+                                     f" match the timestamps({times})"
+    labels_array = np.array(labels.split()[:num], dtype=float)
+    timestamps = np.array(times.split()[:num], dtype=float)
     return labels_array, timestamps
 
 
@@ -50,7 +44,6 @@ def load_video(project,video_path):
     video_file = video_path     #VIDEO PATH (e.g. "*.mp4")
     #T = 30 # seconds
     frames = list()
-    bad_frames = []
     cap = cv2.VideoCapture(video_file)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fs = cap.get(cv2.CAP_PROP_FPS)
@@ -64,24 +57,18 @@ def load_video(project,video_path):
     while True:
         success, frame = cap.read()
         if not success:
-            if frame_idx >= total_frames:  # Reached the end of the video
-                print(f"Finished loading {len(frames)} frames (originally {total_frames}) from {project}")
-                break
-            else:
-                print(f"Failed to read frame {frame_idx}, skipping...")
-                bad_frames.append(frame_idx)
-                frame_idx += 1
-                continue  # skip broken frame, do not break
-        try:
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frames.append(frame_rgb)
-        except Exception as e:
-            print(f"Failed to process frame {frame_idx}: {e}, skipping...")
-            bad_frames.append(frame_idx)
+            print(f"Failed to read frame {frame_idx}, stopping loading frames...")
+            break
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frames.append(frame_rgb)
         frame_idx += 1
-
     cap.release()
-    return frames, fs, bad_frames
+    if len(frames) / fs < 20:
+        print(f"Warning: Only {len(frames) / fs:.2f} seconds of video loaded, which is less than 20 seconds!")
+        raise ValueError(f"Video loaded is too short (less than 20 seconds).")
+    else:
+        print(f"Successfully loaded {len(frames)} frames ({len(frames) / fs:.2f} seconds) from {project}")
+    return frames, fs
     #n_frames = int(fs*T)
     # for i in range(n_frames):
     #     ret, frame = cap.read()
@@ -140,7 +127,7 @@ if __name__ == "__main__":
     model = model_load()
     for key in tqdm(projects.keys(), desc="Processing Projects"):
         data_path = os.path.join(data_dir, projects[key], "vid.avi")
-        frames, fs, bad_frames = load_video(projects[key],data_path)
+        frames, fs = load_video(projects[key],data_path)
         #test_frame = frames[:1]
         cropped_resized_frame = detect_and_crop_faces(frames)
         pred = segment_skin(cropped_resized_frame, model, batch_size=100)
@@ -151,18 +138,19 @@ if __name__ == "__main__":
         # Estimate a PPGI signal
         rgbt_signal = apply_masks(cropped_resized_frame, filtered_rois)
         bvp_signal = extract_bvp_POS(rgbt_signal, fs).reshape(-1)
-        bvp_filtered = filter_signal(bvp_signal, fs, cutoff_freqs=[0.4, 4])
-        ppg_labels, timestamps= load_labels_time(data_dir, projects[key], len(frames), bad_frames)
-        # if i == 0:
-        #     # output ppg wave
-        #   wave_figure(bvp_signal, ppg_labels, fs, timestamps)
-        # hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal,
-        #                                         ppg_labels, fs=fs, hr_method='FFT')
-        # gt_hr_peak_all.append(hr_label_fft)
-        # predict_hr_peak_all.append(hr_pred_fft)
-        # SNR_peak_all.append(SNR_fft)
+        #bvp_filtered = filter_signal(bvp_signal, fs, cutoff_freqs=[0.4, 4])
+        ppg_labels, timestamps= load_labels_time(data_dir, projects[key], len(frames))
+        if i == 0:
+            # output ppg wave
+          wave_figure(bvp_signal, ppg_labels, fs)
+        hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal,
+                                                ppg_labels, fs=fs, hr_method='FFT')
+        gt_hr_fft_all.append(hr_label_fft)
+        predict_hr_fft_all.append(hr_pred_fft)
+        SNR_fft_all.append(SNR_fft)
+
         hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal,
-                                                ppg_labels, fs=fs, hr_method='Peak')
+                                               ppg_labels, fs=fs, hr_method='Peak')
         gt_hr_peak_all.append(hr_label_peak)
         predict_hr_peak_all.append(hr_pred_peak)
         SNR_peak_all.append(SNR_peak)
@@ -170,7 +158,6 @@ if __name__ == "__main__":
 
     calculate_resuls(gt_hr_fft_all, predict_hr_fft_all, SNR_fft_all, method="FFT")
     calculate_resuls(gt_hr_peak_all, predict_hr_peak_all, SNR_peak_all, method="Peak")
-
 
 
         # #x = np.unique(rois[0])

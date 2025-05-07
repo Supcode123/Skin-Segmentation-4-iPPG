@@ -4,8 +4,6 @@ import scipy
 from scipy.sparse import spdiags
 from scipy.signal import butter
 
-
-
 def _next_power_of_2(x):
     """Calculate the nearest power of 2."""
     return 1 if x == 0 else 2 ** (x - 1).bit_length()
@@ -105,7 +103,8 @@ def _calculate_SNR(pred_ppg_signal, hr_label, fs=30, low_pass=0.6, high_pass=3.3
     return SNR
 
 
-def calculate_metric_per_video(predictions, labels, fs=30, use_bandpass=True, hr_method='FFT'):
+def calculate_metric_per_video(predictions, labels, fs=30, use_bandpass=True, hr_method='FFT',
+                               window_len=20, stride=10):
     """Calculate video-level HR and SNR"""
     assert len(predictions) == len(labels), "The length of the prediction and labels don't match "
     predictions = normalize_signal(_detrend(predictions, 100))
@@ -118,16 +117,34 @@ def calculate_metric_per_video(predictions, labels, fs=30, use_bandpass=True, hr
         predictions = scipy.signal.filtfilt(b, a, np.double(predictions))
         labels = scipy.signal.filtfilt(b, a, np.double(labels))
 
-    if hr_method == 'FFT':
-        hr_pred = _calculate_fft_hr(predictions, fs=fs)
-        hr_label = _calculate_fft_hr(labels, fs=fs)
-    if hr_method == 'Peak':
-        hr_pred = _calculate_peak_hr(predictions, fs=fs)
-        hr_label = _calculate_peak_hr(labels, fs=fs)
-    else:
-        raise ValueError('Please use FFT or Peak to calculate your HR.')
-    SNR = _calculate_SNR(predictions, hr_label, fs=fs)
-    return hr_label, hr_pred, SNR
+    win_size = int(window_len * fs)
+    step_size = int(stride * fs)
+    total_len = len(predictions)
+
+    hr_labels = []
+    hr_preds = []
+    snrs = []
+    for start in range(0, total_len - win_size + 1, step_size):
+        end = start + win_size
+        pred_win = predictions[start:end]
+        label_win = labels[start:end]
+
+        if hr_method == 'FFT':
+            hr_pred = _calculate_fft_hr(pred_win, fs=fs)
+            hr_label = _calculate_fft_hr(label_win, fs=fs)
+
+        elif hr_method == 'Peak':
+            hr_pred = _calculate_peak_hr(pred_win, fs=fs)
+            hr_label = _calculate_peak_hr(label_win, fs=fs)
+
+        else:
+            raise ValueError('Please use FFT or Peak to calculate your HR.')
+        snr = _calculate_SNR(pred_win, hr_label, fs=fs)
+        hr_preds.append(hr_pred)
+        hr_labels.append(hr_label)
+        snrs.append(snr)
+
+    return np.mean(hr_labels), np.mean(hr_preds), np.mean(snrs)
 
 
 def calculate_resuls(gt_hr_all, predict_hr_all, SNR_all, method="FFT"):
@@ -151,13 +168,11 @@ def calculate_resuls(gt_hr_all, predict_hr_all, SNR_all, method="FFT"):
     standard_error = np.sqrt(np.std(squared_errors) / np.sqrt(num_test_samples))
     print(f"RMSE ({method} Label): {RMSE} +/- {standard_error}")
 
-    Pearson = np.corrcoef(predict_hr_all, gt_hr_all)
-    correlation_coefficient = Pearson[0][1]
-    standard_error = np.sqrt((1 - correlation_coefficient ** 2) / (num_test_samples - 2))
-    print(f"Pearson ({method} Label): {correlation_coefficient} +/- {standard_error}")
+    # Pearson = np.corrcoef(predict_hr_all, gt_hr_all)
+    # correlation_coefficient = Pearson[0][1]
+    # standard_error = np.sqrt((1 - correlation_coefficient ** 2) / (num_test_samples - 2))
+    # print(f"Pearson ({method} Label): {correlation_coefficient} +/- {standard_error}")
 
     SNR = np.mean(SNR_all)
     standard_error = np.std(SNR_all) / np.sqrt(num_test_samples)
     print(f"SNR ({method} Label): {SNR} +/- {standard_error} (dB)")
-
-
