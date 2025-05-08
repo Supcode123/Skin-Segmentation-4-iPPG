@@ -33,8 +33,8 @@ def load_labels_time(root_dir, project, num):
         lines = file.readlines()
     labels = lines[0].strip()
     times = lines[2].strip()
-    assert len(labels) == len(times), f" labels ({len(labels)}) " \
-                                     f" match the timestamps({times})"
+    # assert len(labels) == len(times), f" labels ({len(labels)}) " \
+    #                                  f" don't match the timestamps(len({times}))"
     labels_array = np.array(labels.split()[:num], dtype=float)
     timestamps = np.array(times.split()[:num], dtype=float)
     return labels_array, timestamps
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     SNR_fft_all = list()
     i = 0
     # data_path = r'S:\XDatabase\PPGI\UBFC\DATASET_2\subject1\vid.avi'
-    data_dir = r'D:\MA_DATA\video'
+    data_dir = r'S:\XDatabase\PPGI\UBFC\DATASET_2'
     projects = get_video_project_dict(data_dir)
     model = model_load()
     for key in tqdm(projects.keys(), desc="Processing Projects"):

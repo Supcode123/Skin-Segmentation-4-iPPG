@@ -29,7 +29,7 @@ def wave_figure(bvp_signal, ppg_signal, fs):
     #plt.grid(True)
     #plt.legend()  # 显示图例
     plt.tight_layout()
-    #plt.savefig("ppg_plot.png", bbox_inches='tight', dpi=300)
+    plt.savefig("ppg_plot.png", bbox_inches='tight', dpi=300)
     plt.show()
 # 保存为PNG
 # plt.savefig(r"D:\Skin-Segmentation-4-iPPG\log\pic\ppg_waveform.png", dpi=300, bbox_inches='tight')

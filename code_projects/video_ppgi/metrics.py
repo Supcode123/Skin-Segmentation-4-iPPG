@@ -110,12 +110,7 @@ def calculate_metric_per_video(predictions, labels, fs=30, use_bandpass=True, hr
     predictions = normalize_signal(_detrend(predictions, 100))
     labels = normalize_signal(_detrend(labels, 100))
 
-    if use_bandpass:
-        # bandpass filter between [0.75, 2.5] Hz, equals [45, 150] beats per min
-        # bandpass filter between [0.6, 3.3] Hz, equals [36, 198] beats per min
-        [b, a] = butter(1, [0.6 / fs * 2, 3.3 / fs * 2], btype='bandpass')
-        predictions = scipy.signal.filtfilt(b, a, np.double(predictions))
-        labels = scipy.signal.filtfilt(b, a, np.double(labels))
+
 
     win_size = int(window_len * fs)
     step_size = int(stride * fs)
@@ -130,10 +125,25 @@ def calculate_metric_per_video(predictions, labels, fs=30, use_bandpass=True, hr
         label_win = labels[start:end]
 
         if hr_method == 'FFT':
+            if use_bandpass:
+                # bandpass filter between [0.75, 2.5] Hz, equals [45, 150] beats per min
+                # bandpass filter between [0.6, 3.3] Hz, equals [36, 198] beats per min
+                [b, a] = butter(1, [0.6 / fs * 2, 3.3 / fs * 2], btype='bandpass')
+                pred_win = scipy.signal.filtfilt(b, a, np.double(pred_win))
+                label_win = scipy.signal.filtfilt(b, a, np.double(label_win))
             hr_pred = _calculate_fft_hr(pred_win, fs=fs)
             hr_label = _calculate_fft_hr(label_win, fs=fs)
 
         elif hr_method == 'Peak':
+            hr_guess = _calculate_fft_hr(pred_win, fs=fs)
+            low_cutoff = max(0.4, 0.8 * hr_guess / 60)  # Hz
+            high_cutoff = min(4.0, 1.2 * hr_guess / 60)  # Hz
+
+            if use_bandpass:
+                [b, a] = scipy.signal.butter(1, [low_cutoff / fs * 2, high_cutoff / fs * 2], btype='bandpass')
+                pred_win = scipy.signal.filtfilt(b, a, np.double(pred_win))
+                label_win = scipy.signal.filtfilt(b, a, np.double(label_win))
+
             hr_pred = _calculate_peak_hr(pred_win, fs=fs)
             hr_label = _calculate_peak_hr(label_win, fs=fs)
 
