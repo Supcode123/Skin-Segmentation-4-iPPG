@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 from torch import nn
+import json
 
 # with open(r'D:\MA_DATA\video\project1\ground_truth.txt', "r") as f:
 #     lines = f.readlines()
@@ -41,7 +42,7 @@ from torch import nn
 
 from video_ppgi.Model import model_load
 from video_ppgi.face_parse import segment_skin, detect_and_crop_faces
-from video_ppgi.main import overlay
+#from video_ppgi.main import overlay
 from video_ppgi.roi_extraction import extract_roi
 
 def video_load(load_pth):
@@ -64,22 +65,34 @@ def video_load(load_pth):
     print(f"length : {len(frames)}")
     return frames
 
+def count_timestamps(json_path):
+    with open(json_path, "r") as f:
+        data = json.load(f)
+
+    physiological_count = len(data.get("/FullPackage", []))
+
+    image_count = len(data.get("/Image", []))
+
+    print(f"physiological_count: {physiological_count}")
+    print(f"image_count: {image_count}")
+
 
 if __name__ == "__main__":
-    path = r'D:\MA_DATA\video\project1\vid.avi'
-    # path = r'D:\MA_DATA\video\project3\01-01\Image1392643993642815000.png'
+    #path = r'D:\MA_DATA\video\project1\vid.avi'
+    path = r'D:\MA_DATA\pure\01-01\01-01.json'
+    count_timestamps(path)
     # image = cv2.imread(path)
     # rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     # frames = list()
     # frames.append(rgb_image)
-    frames = video_load(path)
-    model = model_load()
-    cropped_resized_frame = detect_and_crop_faces(frames[:1])
-
-    pred = segment_skin(cropped_resized_frame, model, batch_size=1)
-    rois = extract_roi(cropped_resized_frame, pred)
-    overlayed_roi = overlay(cropped_resized_frame[0].astype(np.uint8), rois, (0, 255, 0), 0.3)
-    plt.figure()
-    plt.imshow(overlayed_roi)
-    #plt.savefig("overlayed_roi.png", bbox_inches="tight", pad_inches=0, dpi=300)
-    plt.show()
+    # #frames = video_load(path)
+    # model = model_load()
+    # cropped_resized_frame = detect_and_crop_faces(frames[:1])
+    #
+    # pred = segment_skin(cropped_resized_frame, model, batch_size=1)
+    # rois = extract_roi(cropped_resized_frame, pred)
+    # overlayed_roi = overlay(cropped_resized_frame[0].astype(np.uint8), rois, (0, 255, 0), 0.3)
+    # plt.figure()
+    # plt.imshow(overlayed_roi)
+    # #plt.savefig("overlayed_roi.png", bbox_inches="tight", pad_inches=0, dpi=300)
+    # plt.show()

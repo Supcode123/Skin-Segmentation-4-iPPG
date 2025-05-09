@@ -1,3 +1,4 @@
+
 import os
 from typing import Tuple, List
 from matplotlib import pyplot as plt
@@ -13,9 +14,11 @@ from tqdm import tqdm
 
 from code_projects.video_ppgi.metrics import calculate_metric_per_video, calculate_resuls
 from code_projects.video_ppgi.ppg_wave_figure import wave_figure
+from code_projects.video_ppgi.UBFC_rPPG import load_video, load_labels_time
+from code_projects.video_ppgi.PURE import read_frames, read_wave_with_timestamps
 
 
-def get_video_project_dict(root_dir):
+def get_project_dict(root_dir):
     project_dict = {}
     subjects = sorted(os.listdir(root_dir))
 
@@ -27,57 +30,6 @@ def get_video_project_dict(root_dir):
     return project_dict
 
 
-def load_labels_time(root_dir, project, num):
-    gt_path = os.path.join(root_dir, project, "ground_truth.txt")
-    with open(gt_path, 'r') as file:
-        lines = file.readlines()
-    labels = lines[0].strip()
-    times = lines[2].strip()
-    # assert len(labels) == len(times), f" labels ({len(labels)}) " \
-    #                                  f" don't match the timestamps(len({times}))"
-    labels_array = np.array(labels.split()[:num], dtype=float)
-    timestamps = np.array(times.split()[:num], dtype=float)
-    return labels_array, timestamps
-
-
-def load_video(project,video_path):
-    video_file = video_path     #VIDEO PATH (e.g. "*.mp4")
-    #T = 30 # seconds
-    frames = list()
-    cap = cv2.VideoCapture(video_file)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    fs = cap.get(cv2.CAP_PROP_FPS)
-    frame_width = int(cap.get(3))
-    frame_height = int(cap.get(4))
-    print()
-    print(f"video in {project} FPS: {fs}, Total Frames: {total_frames}")
-    print(f"video in {project} frame_width is {frame_width} \n frame_height is {frame_height}")
-
-    frame_idx = 0
-    while True:
-        success, frame = cap.read()
-        if not success:
-            print(f"Failed to read frame {frame_idx}, stopping loading frames...")
-            break
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frames.append(frame_rgb)
-        frame_idx += 1
-    cap.release()
-    if len(frames) / fs < 20:
-        print(f"Warning: Only {len(frames) / fs:.2f} seconds of video loaded, which is less than 20 seconds!")
-        raise ValueError(f"Video loaded is too short (less than 20 seconds).")
-    else:
-        print(f"Successfully loaded {len(frames)} frames ({len(frames) / fs:.2f} seconds) from {project}")
-    return frames, fs
-    #n_frames = int(fs*T)
-    # for i in range(n_frames):
-    #     ret, frame = cap.read()
-    #     if not ret:
-    #         print(f"Video too short! Could only load {i}/{n_frames} frames")
-    #         break
-    #     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    #     frames.append(rgb_frame)
-    # print(f"Loaded {len(frames)} frames.")
 
 
 def overlay(image: np.ndarray, mask: np.ndarray, color: Tuple[int, int, int], alpha: float) -> np.ndarray:
@@ -120,14 +72,20 @@ if __name__ == "__main__":
     gt_hr_peak_all = list()
     SNR_peak_all = list()
     SNR_fft_all = list()
-    i = 0
+
     # data_path = r'S:\XDatabase\PPGI\UBFC\DATASET_2\subject1\vid.avi'
-    data_dir = r'S:\XDatabase\PPGI\UBFC\DATASET_2'
-    projects = get_video_project_dict(data_dir)
+    data_dir = r'D:\MA_DATA\pure'
+    projects = get_project_dict(data_dir)
     model = model_load()
+    data = "PURE"  # /  "UBFC"
     for key in tqdm(projects.keys(), desc="Processing Projects"):
-        data_path = os.path.join(data_dir, projects[key], "vid.avi")
-        frames, fs = load_video(projects[key],data_path)
+        if data == "UBFC":
+            data_path = os.path.join(data_dir, projects[key], "vid.avi")
+            frames, fs = load_video(projects[key],data_path)
+        elif data == "PURE":
+            data_path = os.path.join(data_dir, projects[key], projects[key])
+            frames = read_frames(data_path)
+            fs = 30
         #test_frame = frames[:1]
         cropped_resized_frame = detect_and_crop_faces(frames)
         pred = segment_skin(cropped_resized_frame, model, batch_size=100)
@@ -139,22 +97,42 @@ if __name__ == "__main__":
         rgbt_signal = apply_masks(cropped_resized_frame, filtered_rois)
         bvp_signal = extract_bvp_POS(rgbt_signal, fs).reshape(-1)
         #bvp_filtered = filter_signal(bvp_signal, fs, cutoff_freqs=[0.4, 4])
-        ppg_labels, timestamps= load_labels_time(data_dir, projects[key], len(frames))
-        if i == 0:
-            # output ppg wave
-          wave_figure(bvp_signal, ppg_labels, fs)
-        hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal,
-                                                ppg_labels, fs=fs, hr_method='FFT')
-        gt_hr_fft_all.append(hr_label_fft)
-        predict_hr_fft_all.append(hr_pred_fft)
-        SNR_fft_all.append(SNR_fft)
+        if data == "UBFC":
+            ppg_labels, timestamps= load_labels_time(data_dir, projects[key], len(frames))
+            if key == 0:
+                # output ppg wave
+                wave_figure(bvp_signal, ppg_labels, fs, data)
+            hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal, ppg_labels,
+                                                                            fs=fs,hr_method='FFT')
+            gt_hr_fft_all.append(hr_label_fft)
+            predict_hr_fft_all.append(hr_pred_fft)
+            SNR_fft_all.append(SNR_fft)
 
-        hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal,
-                                               ppg_labels, fs=fs, hr_method='Peak')
-        gt_hr_peak_all.append(hr_label_peak)
-        predict_hr_peak_all.append(hr_pred_peak)
-        SNR_peak_all.append(SNR_peak)
-        i += 1
+            hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal,ppg_labels,
+                                                                            fs=fs, hr_method='Peak')
+            gt_hr_peak_all.append(hr_label_peak)
+            predict_hr_peak_all.append(hr_pred_peak)
+            SNR_peak_all.append(SNR_peak)
+
+        elif data == "PURE":
+            ppg_labels, ppg_timestamps, img_timestamps = read_wave_with_timestamps(data_dir, projects[key])
+            if key == 0:
+                # output ppg wave
+                wave_figure(bvp_signal, ppg_labels, fs, data, img_timestamps, ppg_timestamps)
+            hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal,ppg_labels, fs=fs,
+                                                        dataset_name=data, img_timestamps=img_timestamps,
+                                                        ppg_timestamps=ppg_timestamps, hr_method='FFT')
+            gt_hr_fft_all.append(hr_label_fft)
+            predict_hr_fft_all.append(hr_pred_fft)
+            SNR_fft_all.append(SNR_fft)
+
+            hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal,ppg_labels, fs=fs,
+                                                        dataset_name=data, img_timestamps=img_timestamps,
+                                                        ppg_timestamps=ppg_timestamps, hr_method='Peak')
+            gt_hr_peak_all.append(hr_label_peak)
+            predict_hr_peak_all.append(hr_pred_peak)
+            SNR_peak_all.append(SNR_peak)
+
 
     calculate_resuls(gt_hr_fft_all, predict_hr_fft_all, SNR_fft_all, method="FFT")
     calculate_resuls(gt_hr_peak_all, predict_hr_peak_all, SNR_peak_all, method="Peak")

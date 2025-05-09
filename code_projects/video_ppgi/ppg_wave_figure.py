@@ -1,15 +1,29 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
+
 from code_projects.video_ppgi.signal_processing import filter_signal
 
 
-def wave_figure(bvp_signal, ppg_signal, fs):
+def wave_figure(bvp_signal, ppg_signal, fs, dataset_name: str = "UBFC", img_timestamps=None,
+                ppg_timestamps=None):
     """Plotting the PPG signal and instantaneous HR over time"""
 
     T = 20  # 20 seconds
     num = int(fs * T)  # total number of samples
-    bvp_filtered = filter_signal(bvp_signal, fs, cutoff_freqs=[0.6, 3.3])[:num]
-    ppg_filtered = filter_signal(ppg_signal, fs, cutoff_freqs=[0.6, 3.3])[:num]
+    bvp_filtered = filter_signal(bvp_signal[:num], fs, cutoff_freqs=[0.6, 3.3])
+
+    if dataset_name == "UBFC":
+        ppg_filtered = filter_signal(ppg_signal[:num], fs, cutoff_freqs=[0.6, 3.3])
+    elif dataset_name == "PURE":
+        t_start = img_timestamps[0]
+        t_end = img_timestamps[num]
+
+        mask = (ppg_timestamps >= t_start) & (ppg_timestamps <= t_end)
+        ppg_segment = ppg_signal[mask]
+        ppg_filtered = filter_signal(ppg_segment, fs, cutoff_freqs=[0.6, 3.3])
+        interp_func = interp1d(ppg_timestamps[mask], ppg_filtered, kind='linear', fill_value='extrapolate')
+        ppg_filtered = interp_func(img_timestamps[:num])
 
     # normalized to [0,1]
     bvp_normalized = (bvp_filtered - np.min(bvp_filtered)) / (np.max(bvp_filtered) - np.min(bvp_filtered))
@@ -29,7 +43,7 @@ def wave_figure(bvp_signal, ppg_signal, fs):
     #plt.grid(True)
     #plt.legend()  # 显示图例
     plt.tight_layout()
-    plt.savefig("ppg_plot.png", bbox_inches='tight', dpi=300)
+    #plt.savefig(f"{dataset_name}_ppg_plot.png", bbox_inches='tight', dpi=300)
     plt.show()
 # 保存为PNG
 # plt.savefig(r"D:\Skin-Segmentation-4-iPPG\log\pic\ppg_waveform.png", dpi=300, bbox_inches='tight')

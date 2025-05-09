@@ -103,10 +103,12 @@ def _calculate_SNR(pred_ppg_signal, hr_label, fs=30, low_pass=0.6, high_pass=3.3
     return SNR
 
 
-def calculate_metric_per_video(predictions, labels, fs=30, use_bandpass=True, hr_method='FFT',
-                               window_len=20, stride=10):
+def calculate_metric_per_video(predictions, labels, fs=30, dataset_name: str = "UBFC",
+                               img_timestamps=None,ppg_timestamps=None, use_bandpass=True,
+                               hr_method='FFT', window_len=20, stride=10):
     """Calculate video-level HR and SNR"""
-    assert len(predictions) == len(labels), "The length of the prediction and labels don't match "
+    if dataset_name == "UBFC":
+       assert len(predictions) == len(labels), "The length of the prediction and labels don't match "
     predictions = normalize_signal(_detrend(predictions, 100))
     labels = normalize_signal(_detrend(labels, 100))
 
@@ -122,8 +124,13 @@ def calculate_metric_per_video(predictions, labels, fs=30, use_bandpass=True, hr
     for start in range(0, total_len - win_size + 1, step_size):
         end = start + win_size
         pred_win = predictions[start:end]
-        label_win = labels[start:end]
-
+        if dataset_name == "UBFC":
+           label_win = labels[start:end]
+        elif dataset_name == "PURE":
+            t_start = img_timestamps[start]
+            t_end = img_timestamps[end]
+            mask = (ppg_timestamps >= t_start) & (ppg_timestamps <= t_end)
+            label_win = labels[mask]
         if hr_method == 'FFT':
             if use_bandpass:
                 # bandpass filter between [0.75, 2.5] Hz, equals [45, 150] beats per min
