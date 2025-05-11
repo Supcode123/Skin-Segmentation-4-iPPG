@@ -103,7 +103,7 @@ def _calculate_SNR(pred_ppg_signal, hr_label, fs=30, low_pass=0.6, high_pass=3.3
     return SNR
 
 
-def calculate_metric_per_video(predictions, labels, fs=30, dataset_name: str = "UBFC",
+def calculate_metric_per_video(predictions, labels, fs=30, fs_label=30, dataset_name: str = "UBFC",
                                img_timestamps=None,ppg_timestamps=None, use_bandpass=True,
                                hr_method='FFT', window_len=20, stride=10):
     """Calculate video-level HR and SNR"""
@@ -137,9 +137,10 @@ def calculate_metric_per_video(predictions, labels, fs=30, dataset_name: str = "
                 # bandpass filter between [0.6, 3.3] Hz, equals [36, 198] beats per min
                 [b, a] = butter(1, [0.6 / fs * 2, 3.3 / fs * 2], btype='bandpass')
                 pred_win = scipy.signal.filtfilt(b, a, np.double(pred_win))
-                label_win = scipy.signal.filtfilt(b, a, np.double(label_win))
+                [d, c] = butter(1, [0.6 / fs_label * 2, 3.3 / fs_label * 2], btype='bandpass')
+                label_win = scipy.signal.filtfilt(d, c, np.double(label_win))
             hr_pred = _calculate_fft_hr(pred_win, fs=fs)
-            hr_label = _calculate_fft_hr(label_win, fs=fs)
+            hr_label = _calculate_fft_hr(label_win, fs=fs_label)
 
         elif hr_method == 'Peak':
             hr_guess = _calculate_fft_hr(pred_win, fs=fs)
@@ -149,10 +150,11 @@ def calculate_metric_per_video(predictions, labels, fs=30, dataset_name: str = "
             if use_bandpass:
                 [b, a] = scipy.signal.butter(1, [low_cutoff / fs * 2, high_cutoff / fs * 2], btype='bandpass')
                 pred_win = scipy.signal.filtfilt(b, a, np.double(pred_win))
-                label_win = scipy.signal.filtfilt(b, a, np.double(label_win))
+                [d, c] = scipy.signal.butter(1, [low_cutoff / fs_label * 2, high_cutoff / fs_label * 2], btype='bandpass')
+                label_win = scipy.signal.filtfilt(d, c, np.double(label_win))
 
             hr_pred = _calculate_peak_hr(pred_win, fs=fs)
-            hr_label = _calculate_peak_hr(label_win, fs=fs)
+            hr_label = _calculate_peak_hr(label_win, fs=fs_label)
 
         else:
             raise ValueError('Please use FFT or Peak to calculate your HR.')

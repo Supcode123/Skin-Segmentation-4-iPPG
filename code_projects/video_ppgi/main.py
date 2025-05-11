@@ -1,4 +1,3 @@
-
 import os
 from typing import Tuple, List
 from matplotlib import pyplot as plt
@@ -7,8 +6,8 @@ import cv2
 from code_projects.video_ppgi.face_parse import segment_skin, detect_and_crop_faces
 from code_projects.video_ppgi.ppgi_signal import extract_bvp_POS
 from code_projects.video_ppgi.roi_extraction import extract_roi, apply_masks
-from code_projects.video_ppgi.signal_processing import filter_signal, compute_power_spectrum,\
-                                                       temporal_filtering
+from code_projects.video_ppgi.signal_processing import filter_signal, compute_power_spectrum, \
+    temporal_filtering
 from code_projects.video_ppgi.Model import model_load
 from tqdm import tqdm
 
@@ -21,15 +20,12 @@ from code_projects.video_ppgi.PURE import read_frames, read_wave_with_timestamps
 def get_project_dict(root_dir):
     project_dict = {}
     subjects = sorted(os.listdir(root_dir))
-
     for idx, subject in enumerate(subjects):
         subject_path = os.path.join(root_dir, subject)
         if os.path.isdir(subject_path):
             project_dict[idx] = subject
 
     return project_dict
-
-
 
 
 def overlay(image: np.ndarray, mask: np.ndarray, color: Tuple[int, int, int], alpha: float) -> np.ndarray:
@@ -74,19 +70,21 @@ if __name__ == "__main__":
     SNR_fft_all = list()
 
     # data_path = r'S:\XDatabase\PPGI\UBFC\DATASET_2\subject1\vid.avi'
+    data = "PURE"  # /  "UBFC"
     data_dir = r'D:\MA_DATA\pure'
     projects = get_project_dict(data_dir)
     model = model_load()
-    data = "PURE"  # /  "UBFC"
+
     for key in tqdm(projects.keys(), desc="Processing Projects"):
         if data == "UBFC":
             data_path = os.path.join(data_dir, projects[key], "vid.avi")
-            frames, fs = load_video(projects[key],data_path)
+            frames, fs = load_video(projects[key], data_path)
         elif data == "PURE":
             data_path = os.path.join(data_dir, projects[key], projects[key])
             frames = read_frames(data_path)
             fs = 30
-        #test_frame = frames[:1]
+
+        # test_frame = frames[:1]
         cropped_resized_frame = detect_and_crop_faces(frames)
         pred = segment_skin(cropped_resized_frame, model, batch_size=100)
         rois = extract_roi(cropped_resized_frame, pred)
@@ -96,20 +94,20 @@ if __name__ == "__main__":
         # Estimate a PPGI signal
         rgbt_signal = apply_masks(cropped_resized_frame, filtered_rois)
         bvp_signal = extract_bvp_POS(rgbt_signal, fs).reshape(-1)
-        #bvp_filtered = filter_signal(bvp_signal, fs, cutoff_freqs=[0.4, 4])
+        # bvp_filtered = filter_signal(bvp_signal, fs, cutoff_freqs=[0.4, 4])
         if data == "UBFC":
-            ppg_labels, timestamps= load_labels_time(data_dir, projects[key], len(frames))
+            ppg_labels, timestamps = load_labels_time(data_dir, projects[key], len(frames))
             if key == 0:
                 # output ppg wave
                 wave_figure(bvp_signal, ppg_labels, fs, data)
             hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal, ppg_labels,
-                                                                            fs=fs,hr_method='FFT')
+                                                                            fs=fs, fs_label=fs, hr_method='FFT')
             gt_hr_fft_all.append(hr_label_fft)
             predict_hr_fft_all.append(hr_pred_fft)
             SNR_fft_all.append(SNR_fft)
 
-            hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal,ppg_labels,
-                                                                            fs=fs, hr_method='Peak')
+            hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal, ppg_labels,
+                                                                               fs=fs, fs_label=fs, hr_method='Peak')
             gt_hr_peak_all.append(hr_label_peak)
             predict_hr_peak_all.append(hr_pred_peak)
             SNR_peak_all.append(SNR_peak)
@@ -119,16 +117,20 @@ if __name__ == "__main__":
             if key == 0:
                 # output ppg wave
                 wave_figure(bvp_signal, ppg_labels, fs, data, img_timestamps, ppg_timestamps)
-            hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal,ppg_labels, fs=fs,
-                                                        dataset_name=data, img_timestamps=img_timestamps,
-                                                        ppg_timestamps=ppg_timestamps, hr_method='FFT')
+            hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal, ppg_labels, fs=fs,
+                                                                            fs_label=60, dataset_name=data,
+                                                                            img_timestamps=img_timestamps,
+                                                                            ppg_timestamps=ppg_timestamps,
+                                                                            hr_method='FFT')
             gt_hr_fft_all.append(hr_label_fft)
             predict_hr_fft_all.append(hr_pred_fft)
             SNR_fft_all.append(SNR_fft)
 
-            hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal,ppg_labels, fs=fs,
-                                                        dataset_name=data, img_timestamps=img_timestamps,
-                                                        ppg_timestamps=ppg_timestamps, hr_method='Peak')
+            hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal, ppg_labels, fs=fs,
+                                                                               fs_label=60, dataset_name=data,
+                                                                               img_timestamps=img_timestamps,
+                                                                               ppg_timestamps=ppg_timestamps,
+                                                                               hr_method='Peak')
             gt_hr_peak_all.append(hr_label_peak)
             predict_hr_peak_all.append(hr_pred_peak)
             SNR_peak_all.append(SNR_peak)
@@ -137,14 +139,12 @@ if __name__ == "__main__":
     calculate_resuls(gt_hr_fft_all, predict_hr_fft_all, SNR_fft_all, method="FFT")
     calculate_resuls(gt_hr_peak_all, predict_hr_peak_all, SNR_peak_all, method="Peak")
 
-
-        # #x = np.unique(rois[0])
-        # overlayed_roi = overlay(cropped_resized_frame[0].astype(np.uint8), rois[0], (0, 255, 0), 0.3)
-        # plt.figure()
-        # plt.imshow(overlayed_roi)
-        # #plt.savefig("overlayed_roi.png", bbox_inches="tight", pad_inches=0, dpi=300)
-        # plt.show()
-
+    # #x = np.unique(rois[0])
+    # overlayed_roi = overlay(cropped_resized_frame[0].astype(np.uint8), rois[0], (0, 255, 0), 0.3)
+    # plt.figure()
+    # plt.imshow(overlayed_roi)
+    # #plt.savefig("overlayed_roi.png", bbox_inches="tight", pad_inches=0, dpi=300)
+    # plt.show()
 
     # Compute the heart rate
     # F, P = compute_power_spectrum(bvp_filtered, fs)

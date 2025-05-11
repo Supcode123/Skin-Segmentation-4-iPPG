@@ -21,9 +21,10 @@ def wave_figure(bvp_signal, ppg_signal, fs, dataset_name: str = "UBFC", img_time
 
         mask = (ppg_timestamps >= t_start) & (ppg_timestamps <= t_end)
         ppg_segment = ppg_signal[mask]
-        ppg_filtered = filter_signal(ppg_segment, fs, cutoff_freqs=[0.6, 3.3])
+        ppg_filtered = filter_signal(ppg_segment, fs=60, cutoff_freqs=[0.6, 3.3])
         interp_func = interp1d(ppg_timestamps[mask], ppg_filtered, kind='linear', fill_value='extrapolate')
         ppg_filtered = interp_func(img_timestamps[:num])
+    # elif dataset_name == "kismed":
 
     # normalized to [0,1]
     bvp_normalized = (bvp_filtered - np.min(bvp_filtered)) / (np.max(bvp_filtered) - np.min(bvp_filtered))

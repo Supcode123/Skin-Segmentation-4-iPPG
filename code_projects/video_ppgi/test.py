@@ -1,3 +1,5 @@
+import os
+
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
@@ -42,7 +44,7 @@ import json
 
 from video_ppgi.Model import model_load
 from video_ppgi.face_parse import segment_skin, detect_and_crop_faces
-#from video_ppgi.main import overlay
+from video_ppgi.main import overlay
 from video_ppgi.roi_extraction import extract_roi
 
 def video_load(load_pth):
@@ -76,23 +78,38 @@ def count_timestamps(json_path):
     print(f"physiological_count: {physiological_count}")
     print(f"image_count: {image_count}")
 
+def get_project_dict(root_dir):
+    project_dict = {}
+    subjects = sorted(os.listdir(root_dir))  # ["p001", "p002", ...]
+
+    for subject in subjects:
+        subject_path = os.path.join(root_dir, subject)  # ./p001
+        if os.path.isdir(subject_path):
+            tasks = sorted(os.listdir(subject_path))  # ["v01", "v02", ...]
+            project_dict[subject] = tasks
+
+    return project_dict
+
 
 if __name__ == "__main__":
     #path = r'D:\MA_DATA\video\project1\vid.avi'
-    path = r'D:\MA_DATA\pure\01-01\01-01.json'
-    count_timestamps(path)
+    #path = r'D:\MA_DATA\pure\01-01\01-01.json'
+    #path = r'D:\MA_DATA\kismed\video_RAW_RGBA.avi'
+    path = r'D:\MA_DATA\kismed'
+    projects=get_project_dict(path)
+    print(projects)
+    # count_timestamps(path)
     # image = cv2.imread(path)
     # rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     # frames = list()
     # frames.append(rgb_image)
-    # #frames = video_load(path)
+    #frames = video_load(path)
     # model = model_load()
     # cropped_resized_frame = detect_and_crop_faces(frames[:1])
-    #
     # pred = segment_skin(cropped_resized_frame, model, batch_size=1)
     # rois = extract_roi(cropped_resized_frame, pred)
     # overlayed_roi = overlay(cropped_resized_frame[0].astype(np.uint8), rois, (0, 255, 0), 0.3)
     # plt.figure()
     # plt.imshow(overlayed_roi)
-    # #plt.savefig("overlayed_roi.png", bbox_inches="tight", pad_inches=0, dpi=300)
+    # # #plt.savefig("overlayed_roi.png", bbox_inches="tight", pad_inches=0, dpi=300)
     # plt.show()
