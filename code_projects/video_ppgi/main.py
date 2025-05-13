@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     # data_path = r'S:\XDatabase\PPGI\UBFC\DATASET_2\subject1\vid.avi'
     data = "PURE"  # /  "UBFC"
-    data_dir = r'D:\MA_DATA\pure'
+    data_dir = r'H:\PURE'
     projects = get_project_dict(data_dir)
     model = model_load()
 
@@ -119,8 +119,8 @@ if __name__ == "__main__":
                 wave_figure(bvp_signal, ppg_labels, fs, data, img_timestamps, ppg_timestamps)
             hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal, ppg_labels, fs=fs,
                                                                             fs_label=60, dataset_name=data,
-                                                                            img_timestamps=img_timestamps,
-                                                                            ppg_timestamps=ppg_timestamps,
+                                                                            frame_ts=img_timestamps,
+                                                                            gt_ts=ppg_timestamps,
                                                                             hr_method='FFT')
             gt_hr_fft_all.append(hr_label_fft)
             predict_hr_fft_all.append(hr_pred_fft)
@@ -128,8 +128,8 @@ if __name__ == "__main__":
 
             hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal, ppg_labels, fs=fs,
                                                                                fs_label=60, dataset_name=data,
-                                                                               img_timestamps=img_timestamps,
-                                                                               ppg_timestamps=ppg_timestamps,
+                                                                               frame_ts=img_timestamps,
+                                                                               gt_ts=ppg_timestamps,
                                                                                hr_method='Peak')
             gt_hr_peak_all.append(hr_label_peak)
             predict_hr_peak_all.append(hr_pred_peak)

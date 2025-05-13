@@ -9,21 +9,23 @@ def wave_figure(bvp_signal, ppg_signal, fs, dataset_name: str = "UBFC", img_time
                 ppg_timestamps=None):
     """Plotting the PPG signal and instantaneous HR over time"""
 
+
     T = 20  # 20 seconds
     num = int(fs * T)  # total number of samples
     bvp_filtered = filter_signal(bvp_signal[:num], fs, cutoff_freqs=[0.6, 3.3])
 
     if dataset_name == "UBFC":
+        fs_label = 30
         ppg_filtered = filter_signal(ppg_signal[:num], fs, cutoff_freqs=[0.6, 3.3])
     elif dataset_name == "PURE":
+        fs_label = 60
         t_start = img_timestamps[0]
         t_end = img_timestamps[num]
 
         mask = (ppg_timestamps >= t_start) & (ppg_timestamps <= t_end)
         ppg_segment = ppg_signal[mask]
         ppg_filtered = filter_signal(ppg_segment, fs=60, cutoff_freqs=[0.6, 3.3])
-        interp_func = interp1d(ppg_timestamps[mask], ppg_filtered, kind='linear', fill_value='extrapolate')
-        ppg_filtered = interp_func(img_timestamps[:num])
+
     # elif dataset_name == "kismed":
 
     # normalized to [0,1]
@@ -33,8 +35,8 @@ def wave_figure(bvp_signal, ppg_signal, fs, dataset_name: str = "UBFC", img_time
 
     time_axis = np.linspace(0, T, num)
     plt.figure(figsize=(10, 4))
-    plt.plot(time_axis, ppg_normalized, color='blue', label='Ground Truth')
-    plt.plot(time_axis, bvp_normalized, color='orange', label='Extracted PPG')
+    plt.plot(np.arange(ppg_normalized.shape[0]) / fs_label, ppg_normalized, color='blue', label='Ground Truth')
+    plt.plot(np.arange(bvp_normalized.shape[0]) / fs, bvp_normalized, color='orange', label='Extracted PPG')
     plt.title('PPG Signal over Time')
     plt.xlabel('Time (s)')
     plt.ylabel('y')
@@ -44,7 +46,7 @@ def wave_figure(bvp_signal, ppg_signal, fs, dataset_name: str = "UBFC", img_time
     #plt.grid(True)
     #plt.legend()  # 显示图例
     plt.tight_layout()
-    #plt.savefig(f"{dataset_name}_ppg_plot.png", bbox_inches='tight', dpi=300)
+    plt.savefig(f"{dataset_name}_ppg_plot.png", bbox_inches='tight', dpi=300)
     plt.show()
 # 保存为PNG
 # plt.savefig(r"D:\Skin-Segmentation-4-iPPG\log\pic\ppg_waveform.png", dpi=300, bbox_inches='tight')

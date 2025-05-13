@@ -104,8 +104,8 @@ def _calculate_SNR(pred_ppg_signal, hr_label, fs=30, low_pass=0.6, high_pass=3.3
 
 
 def calculate_metric_per_video(predictions, labels, fs=30, fs_label=30, dataset_name: str = "UBFC",
-                               img_timestamps=None,ppg_timestamps=None, use_bandpass=True,
-                               hr_method='FFT', window_len=20, stride=10):
+                               frame_ts=None, gt_ts=None, use_bandpass=True,
+                               hr_method='FFT', win_size=30, step=15):
     """Calculate video-level HR and SNR"""
     if dataset_name == "UBFC":
        assert len(predictions) == len(labels), "The length of the prediction and labels don't match "
@@ -114,23 +114,24 @@ def calculate_metric_per_video(predictions, labels, fs=30, fs_label=30, dataset_
 
 
 
-    win_size = int(window_len * fs)
-    step_size = int(stride * fs)
-    total_len = len(predictions)
+    t_start = max(frame_ts[0], gt_ts[0])
+    t_end = min(frame_ts[-1], gt_ts[-1]) - win_size
+    t = t_start
 
     hr_labels = []
     hr_preds = []
     snrs = []
-    for start in range(0, total_len - win_size + 1, step_size):
-        end = start + win_size
-        pred_win = predictions[start:end]
+    while t < t_end:
+        t0, t1 = t, t + win_size
+        vid_mask = (frame_ts >= t0) & (frame_ts < t1)
+        # predicted bvp
+        pred_win = predictions[vid_mask]
+        # gt
         if dataset_name == "UBFC":
-           label_win = labels[start:end]
+            label_win = labels[vid_mask] # fs = fs_label
         elif dataset_name == "PURE":
-            t_start = img_timestamps[start]
-            t_end = img_timestamps[end]
-            mask = (ppg_timestamps >= t_start) & (ppg_timestamps <= t_end)
-            label_win = labels[mask]
+            gt_mask = (gt_ts >= t0) & (gt_ts < t1)
+            label_win = labels[gt_mask]
         if hr_method == 'FFT':
             if use_bandpass:
                 # bandpass filter between [0.75, 2.5] Hz, equals [45, 150] beats per min
@@ -159,6 +160,7 @@ def calculate_metric_per_video(predictions, labels, fs=30, fs_label=30, dataset_
         else:
             raise ValueError('Please use FFT or Peak to calculate your HR.')
         snr = _calculate_SNR(pred_win, hr_label, fs=fs)
+        t += step
         hr_preds.append(hr_pred)
         hr_labels.append(hr_label)
         snrs.append(snr)
