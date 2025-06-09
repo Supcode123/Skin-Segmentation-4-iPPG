@@ -18,7 +18,7 @@ def load_labels_time(root_dir, project, num):
 
 def load_video(project,video_path):
     video_file = video_path     #VIDEO PATH (e.g. "*.mp4")
-    #T = 30 # seconds
+    # T = 20 # seconds
     frames = list()
     cap = cv2.VideoCapture(video_file)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -28,7 +28,7 @@ def load_video(project,video_path):
     print()
     print(f"video in {project} FPS: {fs}, Total Frames: {total_frames}")
     print(f"video in {project} frame_width is {frame_width} \n frame_height is {frame_height}")
-
+    #
     frame_idx = 0
     while True:
         success, frame = cap.read()
@@ -45,7 +45,7 @@ def load_video(project,video_path):
     else:
         print(f"Successfully loaded {len(frames)} frames ({len(frames) / fs:.2f} seconds) from {project}")
     return frames, fs
-    #n_frames = int(fs*T)
+    # n_frames = int(fs*T)
     # for i in range(n_frames):
     #     ret, frame = cap.read()
     #     if not ret:
@@ -54,3 +54,4 @@ def load_video(project,video_path):
     #     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     #     frames.append(rgb_frame)
     # print(f"Loaded {len(frames)} frames.")
+    # return frames, fs

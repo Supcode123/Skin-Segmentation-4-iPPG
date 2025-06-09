@@ -1,0 +1,30 @@
+DATA:
+  FILTER_MISLABELED: False
+  IMG_SIZE: (3, 224, 224)
+  MEAN: [ 0.485, 0.456, 0.406 ]
+  STD: [ 0.229, 0.224, 0.225 ]
+  CLASSES: 2
+  EXP: EXP2
+  SWIN_UNET: True
+MODEL:
+  NAME: Swin_Unet
+  
+  SWIN:
+    PATCH_SIZE: 4
+    EMBED_DIM: 96
+    DEPTHS: [ 2, 2, 2, 2 ]
+    NUM_HEADS: [ 3, 6, 12, 24 ]
+    WINDOW_SIZE: 7
+    MLP_RATIO: 4.
+    QKV_BIAS: true
+    QK_SCALE: null
+    APE: false
+    PATCH_NORM: true
+  
+  USE_CHECKPOINT: false
+  DROP_RATE: 0.
+  DROP_PATH_RATE: 0.2
+  PRETRAIN_CKPT: null
+TRAIN:
+  BATCH_SIZE: 1
+  WORKERS: 8

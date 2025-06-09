@@ -131,8 +131,8 @@ class Dataset(data.Dataset):
 
         img = img_to_tensor(img)
         mask = torch.from_numpy(mask)
-        if self.num_classes == 2:
-           mask = remap_mask(mask,self.EXP)
+        #if self.num_classes == 2:
+        mask = remap_mask(mask,self.EXP)
         mask = mask.long().squeeze(0)
 
         return img, mask, file_name

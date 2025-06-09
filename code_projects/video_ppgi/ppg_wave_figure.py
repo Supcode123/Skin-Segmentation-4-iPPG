@@ -33,8 +33,8 @@ def wave_figure(bvp_signal, ppg_signal, fs, dataset_name: str = "UBFC", img_time
     ppg_normalized = (ppg_filtered - np.min(ppg_filtered)) / (np.max(ppg_filtered) - np.min(ppg_filtered))
     bvp_normalized += 1 # y offset of bvp
 
-    time_axis = np.linspace(0, T, num)
-    plt.figure(figsize=(10, 4))
+    #time_axis = np.linspace(0, T, num)
+    plt.figure(figsize=(8, 8))
     plt.plot(np.arange(ppg_normalized.shape[0]) / fs_label, ppg_normalized, color='blue', label='Ground Truth')
     plt.plot(np.arange(bvp_normalized.shape[0]) / fs, bvp_normalized, color='orange', label='Extracted PPG')
     plt.title('PPG Signal over Time')

@@ -97,7 +97,7 @@ EXP_ = {"LABEL": {
         15: 'ear_r',
         16: 'neck_l',
         17: 'neck',
-        #18: 'cloth',
+        18: 'cloth',
         255: "Ignore",
     }
 }

@@ -114,8 +114,9 @@ def calculate_metric_per_video(predictions, labels, fs=30, fs_label=30, dataset_
 
 
 
-    t_start = max(frame_ts[0], gt_ts[0])
-    t_end = min(frame_ts[-1], gt_ts[-1]) - win_size
+    t_start = frame_ts[0]
+   # t_end = frame_ts[-1] - win_size
+    t_end = frame_ts[0] + win_size
     t = t_start
 
     hr_labels = []

@@ -33,7 +33,7 @@ def extract_bvp_POS(rgb_full: np.ndarray, fs: float, **kwargs) -> np.ndarray:
             s2 = s[1, :]
             if s2.std() == 0:
                 print("! s2.std() is zero !")
-                return None
+                continue
             # tuning
             hi = s1 + (s1.std() / s2.std()) * s2
             # overlap-adding

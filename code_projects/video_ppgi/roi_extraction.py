@@ -16,8 +16,8 @@ def extract_roi(frames: List[np.ndarray], pred_masks: List[torch.Tensor]):
         # opened = cv2.morphologyEx(pred.astype(np.uint8), cv2.MORPH_OPEN, kernel)
         # skin = np.isin(pred, [1, 2]).astype(np.uint8)
         # kernel_erode = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        kernel_erode = np.ones((3, 3), np.uint8)
-        erode = cv2.erode(pred.astype(np.uint8), kernel_erode, iterations=2)  # dilation
+        # kernel_erode = np.ones((3, 3), np.uint8)
+        # erode = cv2.erode(pred.astype(np.uint8), kernel_erode, iterations=2)  # dilation
         #mask_face = erode
 
         # mask_face = np.isin(erode, 1).astype(np.uint8)
@@ -34,8 +34,8 @@ def extract_roi(frames: List[np.ndarray], pred_masks: List[torch.Tensor]):
 
         # combine
         # mask_face = mask_face * mask_eyes * mask_eyebrows * 255
-        # mask_face = pred * 255
-        mask_face = erode * 255
+        mask_face = pred * 255
+        #mask_face = erode * 255
         rois.append(mask_face)
 
     return rois

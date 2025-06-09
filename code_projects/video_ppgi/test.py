@@ -93,23 +93,24 @@ def get_project_dict(root_dir):
 
 if __name__ == "__main__":
     #path = r'D:\MA_DATA\video\project1\vid.avi'
-    #path = r'D:\MA_DATA\pure\01-01\01-01.json'
+    path = r'D:\MA_DATA\pure\01-01\01-01\Image1392643993642815000.png'
     #path = r'D:\MA_DATA\kismed\video_RAW_RGBA.avi'
-    path = r'D:\MA_DATA\kismed'
-    projects=get_project_dict(path)
-    print(projects)
+    # path = r'D:\MA_DATA\kismed'
+    # projects=get_project_dict(path)
+    # print(projects)
     # count_timestamps(path)
-    # image = cv2.imread(path)
-    # rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    # frames = list()
-    # frames.append(rgb_image)
-    #frames = video_load(path)
-    # model = model_load()
-    # cropped_resized_frame = detect_and_crop_faces(frames[:1])
-    # pred = segment_skin(cropped_resized_frame, model, batch_size=1)
-    # rois = extract_roi(cropped_resized_frame, pred)
-    # overlayed_roi = overlay(cropped_resized_frame[0].astype(np.uint8), rois, (0, 255, 0), 0.3)
-    # plt.figure()
-    # plt.imshow(overlayed_roi)
-    # # #plt.savefig("overlayed_roi.png", bbox_inches="tight", pad_inches=0, dpi=300)
-    # plt.show()
+    image = cv2.imread(path)
+    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    frames = list()
+    frames.append(rgb_image)
+    # frames = video_load(path)
+    model = model_load()
+    cropped_resized_frame = detect_and_crop_faces(frames[:1])
+    pred = segment_skin(cropped_resized_frame, model, batch_size=1)
+    rois = extract_roi(cropped_resized_frame, pred)
+    overlayed_roi = overlay(cropped_resized_frame[0].astype(np.uint8), rois, (0, 255, 0), 0.3)
+    plt.figure()
+    plt.imshow(overlayed_roi)
+    plt.axis("off")
+    plt.savefig("PURE_sample_pre.png", bbox_inches="tight", pad_inches=0, dpi=300)
+    plt.show()

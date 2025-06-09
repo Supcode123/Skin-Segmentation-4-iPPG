@@ -115,8 +115,9 @@ if __name__ == "__main__":
             fs = 30
             # test_frame = frames[:1]
             cropped_resized_frame = center_crop_faces(frames)
-            pred = segment_skin(cropped_resized_frame, model, batch_size=1000)
-            rois = extract_roi(cropped_resized_frame, pred)
+            detect_crop_faces = detect_and_crop_faces(cropped_resized_frame)
+            pred = segment_skin(detect_crop_faces, model, batch_size=500)
+            rois = extract_roi(detect_crop_faces, pred)
             # temporal filtering
             filtered_rois = temporal_filtering(rois, k=5)
             print("temporal filtering done!")

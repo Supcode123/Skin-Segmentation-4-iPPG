@@ -70,8 +70,8 @@ if __name__ == "__main__":
     SNR_fft_all = list()
 
     # data_path = r'S:\XDatabase\PPGI\UBFC\DATASET_2\subject1\vid.avi'
-    data = "PURE"  # /  "UBFC"
-    data_dir = r'H:\PURE'
+    data = "PURE"  # /  "UBFC" "PURE"
+    data_dir = r'D:\MA_DATA\pure'
     projects = get_project_dict(data_dir)
     model = model_load()
 
@@ -94,50 +94,52 @@ if __name__ == "__main__":
         # Estimate a PPGI signal
         rgbt_signal = apply_masks(cropped_resized_frame, filtered_rois)
         bvp_signal = extract_bvp_POS(rgbt_signal, fs).reshape(-1)
-        # bvp_filtered = filter_signal(bvp_signal, fs, cutoff_freqs=[0.4, 4])
+        #bvp_filtered = filter_signal(bvp_signal, fs, cutoff_freqs=[0.6, 3.3])
         if data == "UBFC":
             ppg_labels, timestamps = load_labels_time(data_dir, projects[key], len(frames))
             if key == 0:
                 # output ppg wave
-                wave_figure(bvp_signal, ppg_labels, fs, data)
+                wave_figure(bvp_signal, ppg_labels, fs, data, )
             hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal, ppg_labels,
                                                                             fs=fs, fs_label=fs, hr_method='FFT')
             gt_hr_fft_all.append(hr_label_fft)
             predict_hr_fft_all.append(hr_pred_fft)
             SNR_fft_all.append(SNR_fft)
-
-            hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal, ppg_labels,
+    #
+            hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal, ppg_labels, frame_ts=timestamps,
                                                                                fs=fs, fs_label=fs, hr_method='Peak')
             gt_hr_peak_all.append(hr_label_peak)
             predict_hr_peak_all.append(hr_pred_peak)
             SNR_peak_all.append(SNR_peak)
+    # print(f"gt_hr: {gt_hr_peak_all}")
+    # print(f"pred_hr: {predict_hr_peak_all}")
 
         elif data == "PURE":
             ppg_labels, ppg_timestamps, img_timestamps = read_wave_with_timestamps(data_dir, projects[key])
             if key == 0:
                 # output ppg wave
                 wave_figure(bvp_signal, ppg_labels, fs, data, img_timestamps, ppg_timestamps)
-            hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal, ppg_labels, fs=fs,
-                                                                            fs_label=60, dataset_name=data,
-                                                                            frame_ts=img_timestamps,
-                                                                            gt_ts=ppg_timestamps,
-                                                                            hr_method='FFT')
-            gt_hr_fft_all.append(hr_label_fft)
-            predict_hr_fft_all.append(hr_pred_fft)
-            SNR_fft_all.append(SNR_fft)
-
-            hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal, ppg_labels, fs=fs,
-                                                                               fs_label=60, dataset_name=data,
-                                                                               frame_ts=img_timestamps,
-                                                                               gt_ts=ppg_timestamps,
-                                                                               hr_method='Peak')
-            gt_hr_peak_all.append(hr_label_peak)
-            predict_hr_peak_all.append(hr_pred_peak)
-            SNR_peak_all.append(SNR_peak)
-
-
-    calculate_resuls(gt_hr_fft_all, predict_hr_fft_all, SNR_fft_all, method="FFT")
-    calculate_resuls(gt_hr_peak_all, predict_hr_peak_all, SNR_peak_all, method="Peak")
+    #         hr_label_fft, hr_pred_fft, SNR_fft = calculate_metric_per_video(bvp_signal, ppg_labels, fs=fs,
+    #                                                                         fs_label=60, dataset_name=data,
+    #                                                                         frame_ts=img_timestamps,
+    #                                                                         gt_ts=ppg_timestamps,
+    #                                                                         hr_method='FFT')
+    #         gt_hr_fft_all.append(hr_label_fft)
+    #         predict_hr_fft_all.append(hr_pred_fft)
+    #         SNR_fft_all.append(SNR_fft)
+    #
+    #         hr_label_peak, hr_pred_peak, SNR_peak = calculate_metric_per_video(bvp_signal, ppg_labels, fs=fs,
+    #                                                                            fs_label=60, dataset_name=data,
+    #                                                                            frame_ts=img_timestamps,
+    #                                                                            gt_ts=ppg_timestamps,
+    #                                                                            hr_method='Peak')
+    #         gt_hr_peak_all.append(hr_label_peak)
+    #         predict_hr_peak_all.append(hr_pred_peak)
+    #         SNR_peak_all.append(SNR_peak)
+    #
+    #
+    # calculate_resuls(gt_hr_fft_all, predict_hr_fft_all, SNR_fft_all, method="FFT")
+    # calculate_resuls(gt_hr_peak_all, predict_hr_peak_all, SNR_peak_all, method="Peak")
 
     # #x = np.unique(rois[0])
     # overlayed_roi = overlay(cropped_resized_frame[0].astype(np.uint8), rois[0], (0, 255, 0), 0.3)
@@ -146,11 +148,11 @@ if __name__ == "__main__":
     # #plt.savefig("overlayed_roi.png", bbox_inches="tight", pad_inches=0, dpi=300)
     # plt.show()
 
-    # Compute the heart rate
-    # F, P = compute_power_spectrum(bvp_filtered, fs)
-    #
-    # HR = F[np.argmax(P)] * 60
-    # print(f"Estimated heart rate is {HR:.2f} BPM")
+        #Compute the heart rate
+        # F, P = compute_power_spectrum(bvp_filtered, fs)
+        #
+        # HR = F[np.argmax(P)] * 60
+        # print(f"Estimated heart rate is {HR:.2f} BPM")
     #
     # plt.figure()
     # plt.plot(F[F <= 4], P[F <= 4])

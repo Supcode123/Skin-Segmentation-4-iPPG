@@ -47,7 +47,7 @@ transform = transforms.Compose([
 def center_crop_faces(frames: List[np.ndarray]) -> List[np.ndarray]:
     """Perform center crop (256x256) on each frame. Skip frames that are too small."""
     cropped_faces = []
-    crop_size = 256
+    crop_size = 480
     half_crop = crop_size // 2
 
     for i, frame in enumerate(frames):
