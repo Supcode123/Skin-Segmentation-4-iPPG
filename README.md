@@ -73,4 +73,32 @@ python tools/video_ppgi/main.py --data_path /path/to/data_folder \
                                 --device cuda
 ```
 ## ⚙️ Configuration Parameters
-
+exsample:
+```
+DATA:
+  FILTER_MISLABELED: False
+  IMG_SIZE: (3, 256, 256)
+  MEAN: [ 0.485, 0.456, 0.406 ]
+  STD: [ 0.229, 0.224, 0.225 ]
+  CLASSES: 2                   # could be =2 or =19
+  EXP: EXP2                    # coressponding be 'EXP2' or 'EXP1' 
+  SWIN_UNET: False             # if model is Swin_Unet, set it be 'True'
+PPGi:
+  DATA_NAME: PURE              # processing type : only be 'UBFC' or 'PURE'
+  DATA_PROJECT_ORDER: [ 0 ]    # null -> traverse all projects(videos),[0, 1] -> process only the choosed projects(videos), here represents the 1st and 2nd project are choosed.
+  TASK_ORDER: null #[ 0 ]      # same as above, specify the target tasks(for KISMED dataset).
+  WIN_SIZE: 20                 # window size for HR estimation
+  STEP: 10                     # sliding step for window
+  ROI_OUTPUT: False            # if output the coressponding ROI extracted video
+  METRICS_CAL: True            # if calculate the coressponding HR estimation metrics
+MODEL:
+  NAME: EfficientNetb0_UNet
+  BACKBONE: efficientnet-b0
+  HEAD: Unet
+  ENCODER_WEIGHTS: null        # if use pretrained weights 
+  ENCODER_DEPTH: 5
+  DECODER_CHANNELS: [ 256, 128, 64, 32, 16 ]
+TRAIN:
+  WORKERS: 8
+  BATCH_SIZE: 100
+```
