@@ -6,17 +6,16 @@ The data used in this experiment comes from the following sources:
 - [The Face Synthetics dataset](https://github.com/microsoft/FaceSynthetics)  
 - [CelebAMask-HQ](https://github.com/switchablenorms/CelebAMask-HQ/tree/master)
   The data is organized in the following structure for training and inference:
-
-DatasetRoot/
-├── train/
-│ ├── images/
-│ └── labels/
-├── val/
-│ ├── images/
-│ └── labels/
-└── test/
-├── images/
-└── labels/
+data_root/
+├── train             
+│   ├── images    
+│   └── labels            
+├── val             
+│   ├── images    
+│   └── labels  
+├── test           
+│   ├── images    
+│   └── labels
 
 ### For PPGI Application:
 - [UBFC-RPPG](https://sites.google.com/view/ybenezeth/ubfcrppg)  
