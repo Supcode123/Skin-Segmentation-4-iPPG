@@ -4,23 +4,22 @@
 
 ## 🛠 Installation
 
-The code is tested with Python Version 3.9. We recommend using Miniconda: [Installing Miniconda](https://docs.anaconda.com/miniconda/miniconda-install/)
+The code is tested with Python Version 3.10. We recommend using Miniconda: [Installing Miniconda](https://docs.anaconda.com/miniconda/miniconda-install/)
 
 ```
 git clone <repo>
 
 cd <repo>
 
-conda create -n <project_name> python=3.9
-```
+conda create -n <env_name> python=3.10
 
+conda activate <env_name>
+
+pip install torch==2.5.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
 Then install all necessary packages:
 `pip install -r requirements.txt`
-
-Or using setuptools install the project as package:
-`pip install -e .`
-
-> Advanced users may use Docker for reproducibility
+> 📌 **Note**: Mask2Former and SegNeXt models are implemented and pretrained in [MMSegmentation](https://github.com/open-mmlab/mmsegmentation). Please refer to their setup instructions for environment and checkpoint usage.
 
 ## Usage
 
