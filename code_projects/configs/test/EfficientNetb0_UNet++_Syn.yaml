@@ -6,6 +6,8 @@ DATA:
   CLASSES: 2
   EXP: EXP2
   SWIN_UNET: False
+  DATA_NAME: 'UBFC' #'PURE'
+  PPGi_DATA_PROJET_ORDER: null  #'null' / [0,...]
 MODEL:
   NAME: UnetPlusPlus
   BACKBONE: efficientnet-b0

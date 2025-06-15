@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
 
-from code_projects.video_ppgi.signal_processing import filter_signal
+from tools.video_ppgi.signal_processing import filter_signal
 
 
 def wave_figure(bvp_signal, ppg_signal, fs, dataset_name: str = "UBFC", img_timestamps=None,

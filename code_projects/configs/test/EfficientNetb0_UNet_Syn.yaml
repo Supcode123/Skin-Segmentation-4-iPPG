@@ -3,9 +3,17 @@ DATA:
   IMG_SIZE: (3, 256, 256)
   MEAN: [ 0.485, 0.456, 0.406 ]
   STD: [ 0.229, 0.224, 0.225 ]
-  CLASSES: 19
-  EXP: EXP1
+  CLASSES: 2
+  EXP: EXP2
   SWIN_UNET: False
+PPGi:
+  DATA_NAME: PURE # UBFC
+  DATA_PROJECT_ORDER: [ 0 ] #null /
+  TASK_ORDER: null #[ 0 ] /
+  WIN_SIZE: 20
+  STEP: 10
+  ROI_OUTPUT: False
+  METRICS_CAL: True
 MODEL:
   NAME: EfficientNetb0_UNet
   BACKBONE: efficientnet-b0
@@ -15,4 +23,4 @@ MODEL:
   DECODER_CHANNELS: [ 256, 128, 64, 32, 16 ]
 TRAIN:
   WORKERS: 8
-  BATCH_SIZE: 1
+  BATCH_SIZE: 100

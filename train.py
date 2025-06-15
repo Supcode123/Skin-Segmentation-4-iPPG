@@ -8,7 +8,7 @@ from code_projects.data.dataLoader import Dataload
 from models.Archi import model_select
 from code_projects.utils.before_train import parse_train_args, get_train_info, \
     create_optimizer, create_scheduler
-from code_projects.utils.visualization_plot import create_fig, denormalize
+from code_projects.utils._plot import create_fig, denormalize
 from code_projects.utils.early_stopping import EarlyStopping
 from code_projects.utils.metrics_cal import accuracy, miou_cal, Dice_cal
 from code_projects.utils.losses.loss_cal import final_loss
@@ -141,9 +141,9 @@ def main():
 
 #  ********************** Early Stopping *******************
             early_stopping(val_miou / len(val_dataloader))
-            #if early_stopping.early_stop:
-                #print(f"Training stopped early at epoch {epoch + 1}")
-                #break
+            if early_stopping.early_stop:
+                print(f"Training stopped early at epoch {epoch + 1}")
+                break
             current_score = val_miou / len(val_dataloader)
             if current_score > best_val:  # improve,better
                 best_val = current_score

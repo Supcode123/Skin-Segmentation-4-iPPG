@@ -169,11 +169,11 @@ def apply_bounding_box_mask(output: np.ndarray, bbox: tuple) -> np.ndarray:
     return output_with_bbox
 
 
-def segment_skin(face_img: List[np.ndarray], model, batch_size: int = 1):
+def segment_skin(face_img: List[np.ndarray], model, batch_size: int = 1, works: int = 8):
     """sing U-Net + EfficientNetB0U for skin segmentation"""
     pred_list = []
     dataset = ImageDataset(face_img, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=8,
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=works,
                             drop_last=False)
     model.eval()
     with torch.no_grad():

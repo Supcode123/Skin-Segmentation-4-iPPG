@@ -160,6 +160,7 @@ def calculate_metric_per_video(predictions, labels, fs=30, fs_label=30, dataset_
 
         else:
             raise ValueError('Please use FFT or Peak to calculate your HR.')
+
         snr = _calculate_SNR(pred_win, hr_label, fs=fs)
         t += step
         hr_preds.append(hr_pred)
