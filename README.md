@@ -19,6 +19,7 @@ pip install torch==2.5.1 torchvision torchaudio --index-url https://download.pyt
 ```
 Then install all necessary packages:
 `pip install -r requirements.txt`
+
 > 📌 **Note**: Mask2Former and SegNeXt models are implemented and pretrained in [MMSegmentation](https://github.com/open-mmlab/mmsegmentation). Please refer to their setup instructions for environment and checkpoint usage.
 
 ## Usage
