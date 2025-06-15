@@ -1,6 +1,6 @@
 # Implementation of A Skin Segmentation Model Based on Synthetic Face Images Using Deep Learning
 
-> This experiment is based on training a skin segmentation model with best performance using synthetic face data, and investigates its practicality in the PPGI task involving real face videos. This repository contains code for training/evaluating a face segmentation model using different metrics and visualizing prediction results, as well as applying it to some PPGI tasks.
+> This experiment is based on training a skin segmentation model with best performance using synthetic face data, and investigates its practicality in the PPGI task involving real face videos. This repository contains code for training/evaluating a face segmentation model using different metrics and visualizing prediction results, as well as applying it to some PPGI tasks [Thesis view](https://github.com/Supcode123/Skin-Segmentation-4-iPPG/blob/main/report/Implementation_of_A_Skin_Segmentation_Model_Based_on_Synthetic_Face_Images_Using_Deep_Learning%20(1).pdf).
 
 ## 🛠 Installation
 
