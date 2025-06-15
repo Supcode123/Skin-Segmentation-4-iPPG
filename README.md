@@ -22,9 +22,55 @@ Then install all necessary packages:
 
 > 📌 **Note**: Model Mask2Former and SegNeXt models are implemented and pretrained in [MMSegmentation](https://github.com/open-mmlab/mmsegmentation). Please refer to their setup instructions for environment and checkpoint usage.
 
-## Usage
+## 💡 Usage
 
-> Put instructions on how to use your project code here. Best practice is to prepare a separate scripts for generating data and another script that creates plots and visualizations
+Run the `train` script:
+```
+python train.py --data_path /path/to/data_folder \
+                --data_conf data_config.yaml \
+                --model_conf model_config.yaml \
+                --train_conf train_config.yaml \
+                --log  /path/to/save/logs&results \
+                --device cuda
+```
+Run the `eval` script:
+```
+python model_eval.py --data_path /path/to/data_folder \
+                     --test_conf test_config.yaml \
+                     --chkpt_conf /path/to/checkpoint/dir \
+                     --save_path /path/to/save \
+                     --device cuda
+```
+for `visualization`:
+```
+python tools/eval_pics.py --data_path /path/to/data_folder \
+                          --test_conf test_config.yaml \
+                          --chkpt_conf /path/to/checkpoint/dir \
+                          --save_path /path/to/save \
+                          --device cuda
+```
+for `fps` calculation:
+```
+python tools/fps.py --data_path /path/to/data_folder \
+                     --test_conf test_config.yaml\
+                     --chkpt_conf /path/to/checkpoint/dir \
+                     --device cuda
+```
+for PPGI on `UBFC/PURE dataset`:
+```
+python tools/video_ppgi/main.py --data_path /path/to/data_folder \
+                                --test_conf test_config.yaml\
+                                --chkpt_conf /path/to/checkpoint/dir \
+                                --save_path /path/to/save \
+                                --device cuda
+```
+for PPGI on `KISMED dataset`:
+```
+python tools/video_ppgi/main.py --data_path /path/to/data_folder \
+                                --test_conf test_config.yaml\
+                                --chkpt_conf /path/to/checkpoint/dir \
+                                --save_path /path/to/save \
+                                --device cuda
+```
+## ⚙️ Configuration Parameters
 
-## Configuration Parameters
-> If your code is parameterized, you can explain the most important parameters here
