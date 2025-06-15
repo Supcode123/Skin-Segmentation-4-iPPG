@@ -1,12 +1,6 @@
-# Template Folder Structure for Projects and Theses at KIS*MED
+# Implementation of A Skin Segmentation Model Based on Synthetic Face Images Using Deep Learning
 
-This project structure will help you creating reproducible results in your student project / Bachelor or Master thesis. We will only accept your final submission of the project if it follows the structure outlined in this repository. The repository is created with python projects in mind. If your project uses another language or is more hardware oriented, your supervisior will guide you in making adjustments to the structure.
-
-- A handout with general informations on writing a thesis with us is provided under `docs`
-- We provide a PowerPoint template for the final presentation under `presentation`.
-- The report latex template of KISMED can be downloaded from [ShareLatex (TU Darmstadt)](https://sharelatex.tu-darmstadt.de/read/jyndmxhrgygk#430ce9). We highly recommend using ShareLatex for working on the report because it is easy to set-up.
-
-> Please give a short desription of your project here
+> This experiment is based on training a skin segmentation model with best performance using synthetic face data, and investigates its practicality in the PPGI task involving real face videos.
 
 ## The directory structure
 > This paragraph is only for clarification of the template and should be deleted in a real project
