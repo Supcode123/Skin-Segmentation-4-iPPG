@@ -65,7 +65,7 @@ The data used in this experiment comes from the following sources:
   
   ```
 ## 📊 For `processed `
-processing detail seen in [Datapreparing.ipynb](https://github.com/Supcode123/Skin-Segmentation-4-iPPG/blob/main/notebooks/Datapreparing.ipynb)
+Processing detail seen in [Datapreparing.ipynb](https://github.com/Supcode123/Skin-Segmentation-4-iPPG/blob/main/notebooks/Datapreparing.ipynb)
 
 The data is organized in the following structure for training and inference:
 ```
