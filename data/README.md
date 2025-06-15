@@ -1,10 +1,87 @@
 # Study data
-> Please explain here shortly the content of the data folders
+## 📊 For `raw data`
 
-For reproducibility the data should be strictly separated in `raw`, `processed` and `interim`.
-There should be clear path how to get the preprocessed data in `interim` based on the `raw` data and how to get the final `processed` results from the other two. In the optimal case, there is a single (python) script that produces the resulting data based on the raw data.
+The data used in this experiment comes from the following sources:
 
-*Raw* data should never be changed, because otherwise your results are not reproducible. Science is based on reproducibiltity which is why we value it highly. 
+### For Model Training & Inference:
+- [The Face Synthetics dataset](https://github.com/microsoft/FaceSynthetics)  
+- [CelebAMask-HQ](https://github.com/switchablenorms/CelebAMask-HQ/tree/master)
+  
+### For PPGI Application:
+- [UBFC-RPPG](https://sites.google.com/view/ybenezeth/ubfcrppg)  
+- [PURE](https://www.tu-ilmenau.de/universitaet/fakultaeten/fakultaet-informatik-und-automatisierung/profil/institute-und-fachgebiete/institut-fuer-technische-informatik-und-ingenieurinformatik/fachgebiet-neuroinformatik-und-kognitive-robotik/data-sets-code/pulse-rate-detection-dataset-pure)  
+- KISEMED Institute PPGI Dataset *(internal use only)*
 
-The data can probably not be tracked through git because of its size, data privacy reasons or it may even be hosted on a shared storage. So don't try to upload the data to github.
-For the final submission, put a link to the data inside the respective data folder, if it is already owned by KISMED (e.g. is on the NAS). Otherwise, give the data to your supervisor via filetransfer / hard disk, so he can put it in the folder structure.
+#### UBFC-rPPG:
+ ```
+   RawData/
+   |   |-- subject1/
+   |       |-- vid.avi
+   |       |-- ground_truth.txt
+   |   |-- subject2/
+   |       |-- vid.avi
+   |       |-- ground_truth.txt
+   |...
+   |   |-- subjectn/
+   |       |-- vid.avi
+   |       |-- ground_truth.txt
+  
+  ```
+#### PURE:
+ ```
+   RawData/
+     |   |-- 01-01/
+     |      |-- 01-01/
+     |      |-- 01-01.json
+     |   |-- 01-02/
+     |      |-- 01-02/
+     |      |-- 01-02.json
+     |...
+     |   |-- ii-jj/
+     |      |-- ii-jj/
+     |      |-- ii-jj.json
+  
+  ```
+#### KISEMED Institute PPGI Dataset:
+```
+   RawData/
+     |   |-- p001/
+     |      |-- v01/
+     |          |-- pictures_ZIP_RAW_RGB
+     |          |-- video_RAW_RGB
+     |          |-- ...
+     |          |-- .scv files
+     |      |...
+     |      |-- v12/
+     |...
+     |   |-- p010/
+     |      |-- v01/
+     |          |-- pictures_ZIP_RAW_RGB
+     |          |-- video_RAW_RGB
+     |          |-- ...
+     |          |-- .scv files
+     |      |...
+     |      |-- v12/
+  
+  ```
+## 📊 For `processed `
+processing detail seen in ()
+
+The data is organized in the following structure for training and inference:
+```
+data_root/
+├── train             
+    ├── images    
+    └── labels            
+├── val             
+    ├── images    
+    └── labels  
+├── test           
+    ├── images    
+    └── labels
+
+```
+
+
+
+
