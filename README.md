@@ -67,7 +67,7 @@ python tools/video_ppgi/main.py --data_path /path/to/data_folder \
 ```
 for PPGI on `KISMED dataset`:
 ```
-python tools/video_ppgi/main.py --data_path /path/to/data_folder \
+python tools/video_ppgi/kismed.py --data_path /path/to/data_folder \
                                 --test_conf test_config.yaml\
                                 --chkpt_conf /path/to/checkpoint/dir \
                                 --save_path /path/to/save \
